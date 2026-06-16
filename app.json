@@ -4,7 +4,6 @@
     "slug": "deepseek-custom-api-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "automatic",
     "scheme": "deepseekcustom",
     "assetBundlePatterns": [
       "**/*"
@@ -13,11 +12,11 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.deepseekcustom.apiapp",
-      "edgeToEdgeEnabled": true
+      "package": "com.deepseekcustom.apiapp"
     },
     "plugins": [
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-system-ui"
     ]
   }
 }
