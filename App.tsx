@@ -23,7 +23,7 @@ import { createEmptySession, createWelcomeSession } from "./src/utils/chat";
 import { loadSessions, saveSessions } from "./src/storage/chatStorage";
 import { loadSettings, saveSettings } from "./src/storage/settingsStorage";
 import { AppSettings, ChatSession } from "./src/types";
-import { loadThemeMode, saveThemeMode } from "./src/storage/themeStorage";
+import { loadThemeMode } from "./src/storage/themeStorage";
 
 // ----------------------------------------------------------
 // AppContent — 在 ThemeProvider 内部渲染实际 UI
