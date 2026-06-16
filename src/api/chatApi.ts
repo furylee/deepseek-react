@@ -128,14 +128,31 @@ function parseSseLine(line: string) {
  *      每解析出一段文本就调用 onDelta 回调。
  *   2. 如果不支持（部分旧版 React Native 环境），
  *      等待整个响应结束后一次性解析所有 SSE 行。
+ *   3. TextDecoder 不存在时用 String.fromCharCode 兜底。
+ *   4. 流读取过程中网络断开时，返回已收到的内容而不崩溃。
  */
 async function readStreamingResponse(
   response: Response,
   onDelta: (delta: string) => void
 ) {
-  const reader = (
-    response.body as { getReader?: () => StreamReader } | null
-  )?.getReader?.();
+  // 安全获取 reader，部分 RN 环境可能抛出而非返回 null
+  let reader: StreamReader | undefined;
+  try {
+    reader = (
+      response.body as { getReader?: () => StreamReader } | null
+    )?.getReader?.();
+  } catch {
+    // 获取 reader 失败，走回退路径
+  }
+
+  // 路径 A：不支持流式读取，等全部返回后再解析
+  if (!reader) {
+    const text = await response.text();
+    return text
+      .split("\n")
+      .map(parseSseLine)
+      .join("");
+  }
 
   // 路径 A：不支持流式读取，等全部返回后再解析
   if (!reader) {
@@ -147,19 +164,42 @@ async function readStreamingResponse(
   }
 
   // 路径 B：真流式读取
-  // 注意：TextDecoder 在这里手动获取，不在全局声明，避免和 DOM 类型冲突
-  const TextDecoderCtor = (
-    globalThis as unknown as { TextDecoder: TextDecoderConstructor }
-  ).TextDecoder;
-  const decoder = new TextDecoderCtor("utf-8");
+  // 注意：TextDecoder 在这里手动获取，不在全局声明，避免和 DOM 类型冲突。
+  // TextDecoder 可能在部分 React Native 环境不存在（如旧版 Hermes），做安全兜底。
+  let decoder: TextDecoderLike | null = null;
+  try {
+    const TextDecoderCtor = (
+      globalThis as unknown as { TextDecoder?: TextDecoderConstructor }
+    ).TextDecoder;
+    if (TextDecoderCtor) {
+      decoder = new TextDecoderCtor("utf-8");
+    }
+  } catch {
+    // TextDecoder 不可用，回退到手动字符串拼接
+  }
+
   let fullText = "";
   let buffer = "";
 
   while (true) {
-    const { done, value } = await reader.read();
+    let done = false;
+    let value: Uint8Array | undefined;
+    try {
+      const result = await reader.read();
+      done = result.done;
+      value = result.value;
+    } catch (readError) {
+      // 流读取中断（网络断开等），返回已经收到的内容
+      break;
+    }
     if (done) break;
 
-    buffer += decoder.decode(value, { stream: true });
+    // 逐块解码：优先 TextDecoder，否则用 String.fromCharCode 兜底
+    const chunk = decoder
+      ? decoder.decode(value, { stream: true })
+      : String.fromCharCode(...(value ?? new Uint8Array()));
+    buffer += chunk;
+
     const lines = buffer.split("\n");
     buffer = lines.pop() ?? ""; // 最后一行可能不完整，保留到下次循环
 
@@ -206,24 +246,41 @@ export async function requestAssistantReply({
     throw new Error("请先在设置里填写 API Token。");
   }
 
-  const response = await fetch(makeChatEndpoint(settings.baseUrl), {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${settings.apiToken.trim()}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: settings.model.trim(),
-      messages: toOpenAiMessages(messages),
-      temperature: settings.temperature,
-      max_tokens: settings.maxTokens,
-      stream: settings.stream,
-    }),
-    signal,
-  });
+  let response: Response;
+  try {
+    response = await fetch(makeChatEndpoint(settings.baseUrl), {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${settings.apiToken.trim()}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: settings.model.trim(),
+        messages: toOpenAiMessages(messages),
+        temperature: settings.temperature,
+        max_tokens: settings.maxTokens,
+        stream: settings.stream,
+      }),
+      signal,
+    });
+  } catch (fetchError: any) {
+    // 网络层面的错误（断网、DNS 失败、TLS 错误等），给用户友好提示
+    const message = fetchError?.message ?? "";
+    if (message.includes("Abort") || fetchError?.name === "AbortError") {
+      throw fetchError; // 用户取消的，原样抛出让 ChatScreen 处理
+    }
+    throw new Error(
+      `无法连接到 API 服务器。\n请检查：\n1. 手机是否联网\n2. Base URL 是否正确\n\n${message}`
+    );
+  }
 
   if (!response.ok) {
-    const errorBody = await response.text();
+    let errorBody = "";
+    try {
+      errorBody = await response.text();
+    } catch {
+      // 读取失败也不影响后续流程
+    }
     throw new Error(errorBody || `请求失败，HTTP 状态码：${response.status}`);
   }
 

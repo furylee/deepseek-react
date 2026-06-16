@@ -101,8 +101,12 @@ export function SettingsScreen({
         text: "清除",
         style: "destructive",
         onPress: async () => {
-          await onClearAllSessions();
-          Alert.alert("已清除", "所有聊天记录已清空。");
+          try {
+            await onClearAllSessions();
+            Alert.alert("已清除", "所有聊天记录已清空。");
+          } catch (error: any) {
+            Alert.alert("清除失败", error?.message ?? "清除聊天记录时出错，请重试。");
+          }
         },
       },
     ]);

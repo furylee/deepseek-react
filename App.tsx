@@ -17,6 +17,7 @@ import { StatusBar } from "expo-status-bar";
 
 import { ChatScreen } from "./src/screens/ChatScreen";
 import { SettingsScreen } from "./src/screens/SettingsScreen";
+import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import { ThemeProvider, useAppTheme } from "./src/contexts/ThemeContext";
 import { createEmptySession, createWelcomeSession } from "./src/utils/chat";
 import { loadSessions, saveSessions } from "./src/storage/chatStorage";
@@ -168,10 +169,17 @@ export default function App() {
   const [themeReady, setThemeReady] = useState(false);
 
   useEffect(() => {
-    loadThemeMode().then((mode) => {
-      setInitialThemeMode(mode);
-      setThemeReady(true);
-    });
+    loadThemeMode()
+      .then((mode) => {
+        setInitialThemeMode(mode);
+      })
+      .catch((error) => {
+        console.error("读取主题模式失败：", error);
+        // 使用默认值 "system" 继续
+      })
+      .finally(() => {
+        setThemeReady(true);
+      });
   }, []);
 
   if (!themeReady) {
@@ -186,7 +194,9 @@ export default function App() {
 
   return (
     <ThemeProvider initialMode={initialThemeMode}>
-      <AppContent />
+      <ErrorBoundary>
+        <AppContent />
+      </ErrorBoundary>
     </ThemeProvider>
   );
 }

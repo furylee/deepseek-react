@@ -96,7 +96,11 @@ export function ThemeProvider({ initialMode = "system", children }: ThemeProvide
 
   // 同步到全局 colors 对象（为了那些不方便用 hook 的地方）
   useEffect(() => {
-    Object.assign(globalColors, resolvedColors);
+    try {
+      Object.assign(globalColors, resolvedColors);
+    } catch {
+      // 极端情况：全局对象被冻结，不影响 UI（所有组件走 Context）
+    }
   }, [resolvedColors]);
 
   // 如果 initialMode 变化（比如设置页改了值重新加载），同步更新

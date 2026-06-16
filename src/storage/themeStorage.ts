@@ -16,12 +16,18 @@ export async function loadThemeMode(): Promise<ThemeMode> {
     if (value === "lit" || value === "dim" || value === "system") {
       return value;
     }
-  } catch {
-    // 读取失败，使用默认值
+  } catch (error) {
+    // 读取失败（存储损坏或权限问题），静默使用默认值
+    console.error("读取主题偏好失败：", error);
   }
   return "system";
 }
 
 export async function saveThemeMode(mode: ThemeMode): Promise<void> {
-  await AsyncStorage.setItem(THEME_KEY, mode);
+  try {
+    await AsyncStorage.setItem(THEME_KEY, mode);
+  } catch (error) {
+    // 写入失败不影响用户继续使用 App
+    console.error("保存主题偏好失败：", error);
+  }
 }

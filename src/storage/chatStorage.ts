@@ -39,9 +39,16 @@ export async function loadSessions(): Promise<ChatSession[]> {
  *
  * 会在每次会话内容变化时自动调用（App.tsx 的 useEffect）。
  * 数据以 JSON 字符串形式存储，内容包含所有消息的完整文本。
+ * 如果序列化失败（几乎不可能，但做兜底），静默跳过而不是崩溃。
  */
 export async function saveSessions(sessions: ChatSession[]) {
-  await AsyncStorage.setItem(STORAGE_KEYS.sessions, JSON.stringify(sessions));
+  try {
+    const data = JSON.stringify(sessions);
+    await AsyncStorage.setItem(STORAGE_KEYS.sessions, data);
+  } catch (error) {
+    console.error("保存聊天记录失败：", error);
+    // 不抛出：聊天记录保存失败不应该导致 App 崩溃
+  }
 }
 
 /**
@@ -49,7 +56,13 @@ export async function saveSessions(sessions: ChatSession[]) {
  *
  * 只会删除聊天会话的 key，不会影响设置和 API Token。
  * 注意：API Token 存在 SecureStore 的另一个 key 中，完全独立。
+ * 即使清除失败也不会抛出异常，由调用方决定如何处理。
  */
 export async function clearSessions() {
-  await AsyncStorage.removeItem(STORAGE_KEYS.sessions);
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEYS.sessions);
+  } catch (error) {
+    console.error("清除聊天记录失败：", error);
+    throw error; // 抛出给调用方（SettingsScreen），让它显示错误提示
+  }
 }

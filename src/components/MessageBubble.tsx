@@ -62,7 +62,9 @@ export function MessageBubble({
           ]}
         >
           {isAssistant && !message.isError ? (
-            <Markdown style={makeMarkdownStyles(theme)}>{message.content}</Markdown>
+            <Markdown key={message.id} style={makeMarkdownStyles(theme)}>
+              {message.content || " "}
+            </Markdown>
           ) : (
             <Text
               style={[

@@ -140,7 +140,7 @@ export function ChatScreen({
         }),
       });
     } catch (error: any) {
-      if (error?.name === "AbortError") {
+      if (error?.name === "AbortError" || controller.signal.aborted) {
         // 用户主动点击停止
         onUpdateSession({
           ...nextSession,
@@ -187,14 +187,31 @@ export function ChatScreen({
 
   // ---- 复制消息到剪贴板 ----
   const handleCopy = useCallback(async (text: string) => {
-    await Clipboard.setStringAsync(text);
-    Alert.alert("已复制", "消息内容已复制到剪贴板。");
+    try {
+      await Clipboard.setStringAsync(text);
+      Alert.alert("已复制", "消息内容已复制到剪贴板。");
+    } catch (error: any) {
+      // Clipboard 可能在某些安全策略下失败，不影响 App 继续运行
+      Alert.alert("复制失败", error?.message ?? "无法访问剪贴板，请重试。");
+    }
   }, []);
 
   // ---- 重新生成最后一条 AI 回复 ----
+  // 使用 ref 避免闭包过时导致的竞态条件
+  const activeSessionRef = useRef(activeSession);
+  activeSessionRef.current = activeSession;
+  const isSendingRef = useRef(isSending);
+  isSendingRef.current = isSending;
+
   const handleRegenerate = useCallback(() => {
-    const messages = activeSession.messages;
-    // 找到最后一条用户消息和 AI 消息
+    const session = activeSessionRef.current;
+    if (isSendingRef.current) {
+      Alert.alert("请稍后", "正在生成回复中，请等待完成后再重新生成。");
+      return;
+    }
+
+    const messages = session.messages;
+    // 找到最后一条用户消息和 AI 消息的位置
     let lastUserIndex = -1;
     let lastAssistantIndex = -1;
 
@@ -213,46 +230,42 @@ export function ChatScreen({
       return;
     }
 
-    // 移除最后一条 AI 消息后重新发送
+    // 移除最后一条 AI 消息，然后自动重新发送
     const trimmedMessages = messages.slice(0, lastAssistantIndex);
     const nextSession: ChatSession = {
-      ...activeSession,
+      ...session,
       updatedAt: Date.now(),
       messages: trimmedMessages,
     };
     onUpdateSession(nextSession);
 
-    // 把最后一条用户消息的内容作为草稿，然后自动触发发送
     const lastUserContent = messages[lastUserIndex].content;
+    // 直接把用户消息内容设为草稿，由 sendMessage 统一处理
     setDraft(lastUserContent);
-    // 稍后触发发送（需要等状态更新）
+    // 等状态更新后触发发送
     setTimeout(() => {
-      // 直接构造发送场景
-      if (lastUserContent.trim()) {
-        // 通过回退一条消息的方式重新生成
-        replayLastMessage(lastUserContent, trimmedMessages);
-      }
-    }, 50);
-  }, [activeSession, onUpdateSession]);
+      // 直接调用内部发送函数，避免重复拼接消息
+      triggerRegenerateSend(lastUserContent);
+    }, 100);
+  }, [onUpdateSession]);
 
-  // ---- 重新发送最后一条消息（内部用） ----
-  async function replayLastMessage(
-    content: string,
-    existingMessages: ChatMessage[]
-  ) {
-    if (isSending) return;
+  // ---- 内部重新发送函数（避免与 sendMessage 逻辑重复） ----
+  async function triggerRegenerateSend(content: string) {
+    if (isSendingRef.current) return;
 
+    const session = activeSessionRef.current;
     const userMessage = createMessage("user", content);
     const assistantMessage = createMessage("assistant", "");
-    const nextMessages = [...existingMessages, userMessage, assistantMessage];
+    const nextMessages = [...session.messages, userMessage, assistantMessage];
     const controller = new AbortController();
     const nextSession: ChatSession = {
-      ...activeSession,
+      ...session,
       updatedAt: Date.now(),
       messages: nextMessages,
     };
 
     abortRef.current = controller;
+    setDraft("");
     setIsSending(true);
     onUpdateSession(nextSession);
 
