@@ -19,7 +19,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
-  Clipboard,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -29,6 +28,7 @@ import {
   Text,
   View,
 } from "react-native";
+import * as Clipboard from "expo-clipboard";
 import { LinearGradient } from "expo-linear-gradient";
 import { MessageSquarePlus, Settings, Trash2 } from "lucide-react-native";
 
@@ -186,8 +186,8 @@ export function ChatScreen({
   }
 
   // ---- 复制消息到剪贴板 ----
-  const handleCopy = useCallback((text: string) => {
-    Clipboard.setString(text);
+  const handleCopy = useCallback(async (text: string) => {
+    await Clipboard.setStringAsync(text);
     Alert.alert("已复制", "消息内容已复制到剪贴板。");
   }, []);
 

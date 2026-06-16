@@ -9,10 +9,11 @@
 - 不添加登录认证，除非用户明确提出。
 - 聊天记录保存在本机，不上传到业务服务器。
 - API Token 必须继续使用 `expo-secure-store` 保存，不要放进聊天记录或普通配置 JSON。
-- “清除所有聊天记录”只能清除聊天会话，不应删除 API Token。
-- 每次修改功能、命令、目录、依赖或打包方式后，都要同步更新 `README.md`。
-- 每次新增复杂逻辑后，要在代码里补充对新手友好的关键注释。
-- 每次修改项目维护约定后，要同步更新本文件。
+- "清除所有聊天记录"只能清除聊天会话，不应删除 API Token。
+- **每次修改功能、命令、目录、依赖或打包方式后，都要同步更新 `README.md`。**
+- **每次新增复杂逻辑后，要在代码里补充对新手友好的中文注释。**
+- **每次修改项目维护约定后，要同步更新本文件。**
+- **所有代码注释必须使用中文，面向完全不懂编程的用户编写。**
 
 ## 代码结构约定
 
@@ -20,23 +21,55 @@
 - 本地存储逻辑放在 `src/storage/`。
 - 页面放在 `src/screens/`。
 - 可复用 UI 组件放在 `src/components/`。
+- React Context 放在 `src/contexts/`。
 - 通用颜色、间距、圆角放在 `src/styles/theme.ts`。
 - 共享类型放在 `src/types.ts`。
+- 默认值和常量放在 `src/constants.ts`。
+
+## 主题系统约定
+
+- 主题颜色在 `src/styles/theme.ts` 中定义（`litColors` 浅色、`dimColors` 深色）。
+- 主题上下文在 `src/contexts/ThemeContext.tsx` 中管理。
+- 所有 UI 组件必须通过 `useAppTheme()` hook 获取当前主题颜色。
+- 新增主题颜色 key 时，必须在 `liteColors` 和 `dimColors` 中都添加。
+- 主题偏好独立存储于 `src/storage/themeStorage.ts`（不和 settings 混在一起，避免初始化闪烁）。
 
 ## 产品约定
 
 - 首页应该直接是可用的聊天界面，不做营销落地页。
-- 设置页至少保留 `Base URL`、`API Token`、`Model` 和“清除聊天记录”。
+- 设置页至少保留 `Base URL`、`API Token`、`Model`、"流式输出"开关、"Theme"和"清除聊天记录"。
 - UI 要保持精致、克制、适合长期使用，避免堆砌说明文字。
 - 错误提示要尽量直接告诉用户该检查 API Token、Base URL 或模型名。
+- 深色模式下所有 UI 都要可用、可读，编码时避免写死颜色值。
+
+## 注释规范
+
+- **所有 .ts 和 .tsx 文件开头必须有中文文件头注释**，说明该文件的职责。
+- **每个导出的函数/组件必须有 JSDoc 风格的中文注释**，说明用途、参数和返回值。
+- **关键逻辑处要有行内中文注释**，解释"为什么这样做"而不仅仅是"做了什么"。
+- **新增依赖和脚本命令后要更新 README 中的技术栈和常用命令表格。**
+- **修改类型定义后要同步更新注释。**
 
 ## 打包约定
 
 - APK 打包命令保留为 `npm run build:android:apk`。
 - AAB 打包命令保留为 `npm run build:android:aab`。
 - 依赖版本不匹配时，优先使用 `npm run fix:deps` 让 Expo 自动对齐。
-- Expo SDK 55 下 `expo-secure-store` 应保持 `~55.0.14`，`expo-status-bar` 应保持 `~55.0.6`。
-- 不要为 `TextDecoder` 新增全局 `.d.ts` 声明；流式读取的最小类型应保留在 `src/api/chatApi.ts` 局部。
-- 修改设置存储时，继续通过归一化逻辑保证 `loadSettings()` 返回完整 `AppSettings`。
 - 修改 `app.json` 的安卓包名、版本号或 EAS 配置后，必须在 README 里说明。
 - 不要手写占位的 EAS project id；首次构建时让 EAS 自动初始化项目配置。
+- 新增 Expo 模块依赖（如 `expo-*`）时，注意版本号要与 Expo SDK 主版本号对齐。
+
+## 依赖版本记录
+
+| 依赖 | 当前版本 | 说明 |
+|------|---------|------|
+| expo | ~56.0.12 | Expo SDK 56 |
+| react-native | ~0.86.0 | React Native 核心 |
+| lucide-react-native | ^1.18.0 | 图标库（v1，API 与 v0.x 可能不同） |
+| react-native-markdown-display | ^7.0.2 | Markdown 渲染 |
+| @react-native-async-storage/async-storage | ^3.1.1 | 聊天记录本地存储 |
+| expo-secure-store | ~56.0.4 | API Token 加密存储 |
+| expo-clipboard | ^56.0.4 | 消息复制到剪贴板 |
+| react-native-safe-area-context | ~5.8.0 | 安全区域适配 |
+| expo-linear-gradient | ~56.0.4 | 渐变背景 |
+| react-native-svg | ~15.15.5 | SVG 渲染（图标库依赖） |

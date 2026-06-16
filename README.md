@@ -1,145 +1,214 @@
 # DeepSeek Custom API App
 
-这是一个使用 **React Native + Expo + TypeScript** 开发的安卓优先聊天 App。它仿照 DeepSeek App 的核心使用方式：打开即聊天、支持历史会话、支持 Markdown 回复、本地保存聊天记录，并允许用户在设置里填写自己的 API Token 和自定义接口地址。
+一个使用 **React Native + Expo + TypeScript** 开发的安卓优先聊天 App。
+仿照 DeepSeek App 核心体验：打开即聊天、历史会话、Markdown 回复、
+本地保存聊天记录，并支持自定义 API Token 和接口地址。
 
-本项目不包含登录认证，聊天记录只保存在手机本机。
+**无需登录认证，所有聊天记录只保存在手机本地。**
 
 ## 主要功能
 
-- 聊天首页：新建聊天、切换历史聊天、删除当前聊天。
-- 消息生成：支持发送消息、停止生成，并在接口支持时流式显示回复。
-- 自定义 API：设置 `Base URL`、`API Token`、`Model`。
-- 生成参数：设置 `Temperature`、`Max Tokens`、是否开启流式输出。
-- 本地存储：聊天记录保存在 `AsyncStorage`，API Token 保存在 `expo-secure-store`。
-- Markdown 展示：AI 回复支持基础 Markdown 和代码块样式。
-- 安卓打包：内置 EAS Build 配置，可生成 APK 或 AAB。
+- **聊天首页**：新建聊天、切换历史聊天、删除聊天
+- **流式消息**：在 API 支持时实时显示回复（可关闭）
+- **自定义 API**：设置 Base URL、API Token、Model
+- **生成参数**：Temperature、Max Tokens、流式输出开关
+- **消息操作**：长按 AI 消息可复制内容或重新生成回复
+- **深色模式**：浅色 / 深色 / 跟随系统
+- **本地存储**：聊天记录存 AsyncStorage，API Token 存 SecureStore（加密）
+- **安卓打包**：内置 EAS Build 配置，一键生成 APK 或 AAB
+- **中文注释**：全部代码附带新手友好的中文注释
 
-## 技术栈
+## 面向完全初学者的术语解释
 
-- `Expo SDK 55`
-- `React Native`
-- `TypeScript`
-- `expo-secure-store`
-- `@react-native-async-storage/async-storage`
-- `react-native-markdown-display`
-- `lucide-react-native`
-- `expo-linear-gradient`
+| 术语 | 解释 |
+|------|------|
+| **Expo** | 一个帮你"写一次代码，打包成手机 App"的工具平台 |
+| **API Token** | 你从 DeepSeek 或中转服务商获取的密钥，通常以 `sk-` 开头 |
+| **Base URL** | API 服务地址，例如 `https://api.deepseek.com/v1` |
+| **Model** | 要使用的 AI 模型名称，例如 `deepseek-chat` |
+| **APK** | 安卓安装包文件（可以直接传到手机安装） |
+| **AAB** | 用于上传到 Google Play 应用商店的打包格式 |
+| **EAS** | Expo Application Services，Expo 云端构建服务 |
+| **SSE（流式输出）** | 让 AI 回复像打字一样逐字显示，而非一次性弹出 |
+| **Temperature** | 控制 AI 回复的"创意程度"，0 = 严谨，2 = 天马行空 |
+| **Max Tokens** | AI 单次回复的最大长度限制 |
 
-## 目录说明
+## 环境要求
 
-```txt
-.
-├── App.tsx                      # App 入口，管理聊天页/设置页切换和全局状态
-├── app.json                     # Expo App 配置，包含安卓包名
-├── eas.json                     # EAS 安卓打包配置
-├── package.json                 # 依赖和常用命令
-├── src
-│   ├── api/chatApi.ts           # OpenAI-compatible 聊天接口请求逻辑
-│   ├── components               # 可复用 UI 组件
-│   ├── screens                  # 聊天页和设置页
-│   ├── storage                  # 本地保存聊天和设置
-│   ├── styles/theme.ts          # 颜色、间距、圆角等统一设计变量
-│   ├── types.ts                 # TypeScript 数据类型
-│   └── utils/chat.ts            # 创建会话、消息、标题等工具函数
-└── agent.md                     # 后续 AI/开发者维护本项目时必须遵守的规则
-```
+- **Node.js**：推荐 LTS 版本（在 [nodejs.org](https://nodejs.org) 下载）
+- **npm** 或 **pnpm**：安装 Node.js 时已自动包含
+- **Expo Go App**（可选）：在手机应用商店下载，用于实时测试
 
-## 第一次运行
+## 快速开始（小白版）
 
-你的电脑需要先安装 Node.js。推荐安装 Node.js LTS 版本。
+### 第一步：安装依赖
 
-安装依赖：
+打开终端（Windows 用户：开始菜单 → 输入 "cmd" 回车），进入项目文件夹：
 
 ```bash
+cd deepseek-react
 npm install
+# 或者
+pnpm install
 ```
 
-如果 Expo 提示依赖版本不匹配，运行：
+如果提示依赖版本不兼容，运行：
 
 ```bash
 npm run fix:deps
 ```
 
-启动开发服务：
+### 第二步：启动开发服务
 
 ```bash
 npm run start
 ```
 
-如果你已经安装了安卓模拟器或连接了安卓真机，可以运行：
+执行后会出现一个二维码。你可以：
+- 在安卓手机上安装 **Expo Go** App，扫码打开
+- 或在电脑上安装 **Android Studio**，创建模拟器后按 `a` 键打开
 
-```bash
-npm run android
-```
+### 第三步：设置 API
 
-## App 设置方法
+进入 App 右上角「设置」：
 
-打开 App 后进入右上角“设置”：
+1. **Base URL**：填写你的 API 地址（默认是 DeepSeek 官方地址）
+2. **API Token**：填写你的密钥（以 `sk-` 开头）
+3. **Model**：填写模型名，如 `deepseek-chat`
 
-- `Base URL`：例如 `https://api.deepseek.com/v1`
-- `API Token`：你的接口密钥，例如 `sk-...`
-- `Model`：例如 `deepseek-chat`
+然后返回聊天页即可开始对话。
 
-如果你使用的是自建中转服务，只要它兼容 OpenAI 的 `/chat/completions` 格式即可。代码会自动把 `Base URL` 拼成：
+## App 设置说明
+
+| 设置项 | 说明 | 默认值 |
+|--------|------|--------|
+| Base URL | API 接口地址，会自动拼接 `/chat/completions` | `https://api.deepseek.com/v1` |
+| API Token | 你的 API 密钥，加密存储在系统安全区域 | 空 |
+| Model | 模型名称 | `deepseek-chat` |
+| Temperature | 0~2，越小回答越固定 | `0.7` |
+| Max Tokens | 单次回复最大长度 | `2048` |
+| 流式输出 | 是否边生成边显示 | 开启 |
+| 主题 | 浅色 / 深色 / 跟随系统 | 跟随系统 |
+
+## 目录结构说明
 
 ```txt
-{Base URL}/chat/completions
+.
+├── App.tsx                      # App 入口，管理页面切换和全局状态
+├── app.json                     # Expo 配置（包名、版本号等）
+├── eas.json                     # EAS 安卓打包配置
+├── package.json                 # 依赖列表和脚本命令
+├── tsconfig.json                # TypeScript 编译器配置
+├── babel.config.js              # Babel 编译配置
+├── index.js                     # 应用注册入口
+├── .gitignore                   # Git 忽略规则
+├── agent.md                     # AI/开发者维护规范
+├── src
+│   ├── api/chatApi.ts           # OpenAI 兼容 API 请求逻辑（核心）
+│   ├── components/              # 可复用 UI 组件
+│   │   ├── MessageBubble.tsx    # 消息气泡（支持 Markdown & 长按操作）
+│   │   ├── MessageActions.tsx   # 长按消息后的操作菜单（复制/重新生成）
+│   │   ├── ChatComposer.tsx     # 底部输入框 + 发送/停止按钮
+│   │   └── IconButton.tsx       # 通用图标按钮
+│   ├── contexts/
+│   │   └── ThemeContext.tsx     # 主题上下文（浅色/深色/跟随系统）
+│   ├── screens/
+│   │   ├── ChatScreen.tsx       # 聊天主页
+│   │   └── SettingsScreen.tsx   # 设置页
+│   ├── storage/
+│   │   ├── chatStorage.ts       # 聊天记录读写
+│   │   ├── settingsStorage.ts   # 设置读写（Token 放 SecureStore）
+│   │   └── themeStorage.ts      # 主题偏好读写
+│   ├── styles/theme.ts          # 颜色、间距、圆角等设计变量
+│   ├── utils/chat.ts            # 创建消息、会话等工具函数
+│   ├── types.ts                 # TypeScript 类型定义
+│   └── constants.ts             # 默认值和存储 key
+└── README.md                    # 本文件
 ```
-
-如果你直接填写的地址已经以 `/chat/completions` 结尾，代码不会重复拼接。
 
 ## 安卓打包
 
-本项目使用 EAS Build 打包安卓客户端。
+### 准备
 
-首次使用时安装 EAS CLI：
+1. 安装 EAS CLI：`npm install -g eas-cli`
+2. 登录 Expo：`eas login`（需要注册 [expo.dev](https://expo.dev) 账号）
+3. 首次构建时按提示初始化 EAS 配置
 
-```bash
-npm install -g eas-cli
-```
-
-登录 Expo：
-
-```bash
-eas login
-```
-
-生成可安装的 APK：
+### 生成 APK（可直接安装）
 
 ```bash
 npm run build:android:apk
 ```
 
-生成用于应用商店的 AAB：
+构建完成后，Expo 会返回一个下载链接。
+
+### 生成 AAB（用于应用商店）
 
 ```bash
 npm run build:android:aab
 ```
 
-首次云端构建时，如果 EAS 提示初始化项目，按提示确认即可。Expo 会自动写入真实的项目配置。
+> **注意**：云端构建是免费的，但有次数和时间限制。免费版每月约 30 次构建。
 
-## 重要开发说明
+## 技术栈
 
-- 不要加入登录认证，除非产品需求明确改变。
-- 不要把 API Token 保存到普通聊天记录里。
-- 聊天记录只做本地存储，清除聊天记录时不要清除 API Token。
-- 发送按钮在生成过程中会变成停止按钮，方便中断较长回复。
-- 修改任何功能后，需要同步更新 `README.md` 和代码注释。
-- 修改长期维护规则时，需要同步更新 `agent.md`。
-- 不要在 `app.json` 里手写假的 EAS project id；首次构建时让 EAS 自动生成。
-- 当前接口按 OpenAI-compatible 格式实现，核心文件是 `src/api/chatApi.ts`。
-- 真机上部分接口或运行时可能不支持真正的流式读取；代码已做兼容，必要时可在设置里关闭“流式输出”。
-- Expo SDK 55 的 `expo-secure-store` 使用 `~55.0.14`，`expo-status-bar` 使用 `~55.0.6`，不要改回旧版号。
-- 流式读取的 `TextDecoder` 类型在 `src/api/chatApi.ts` 内部做了局部声明，不要新增全局声明文件，避免和 DOM 类型冲突。
-- 从本地读取设置时会先经过归一化，保证缺失字段自动回到默认值。
+| 技术 | 说明 |
+|------|------|
+| Expo SDK 56 | React Native 开发框架 |
+| TypeScript 5 | 带类型检查的 JavaScript |
+| AsyncStorage | 聊天记录本地存储 |
+| expo-secure-store | API Token 加密存储 |
+| expo-clipboard | 消息复制到剪贴板 |
+| react-native-markdown-display | AI 回复的 Markdown 渲染 |
+| lucide-react-native v1 | 图标库 |
+| expo-linear-gradient | 渐变色按钮和标题栏 |
+| react-native-safe-area-context | 刘海屏/挖孔屏适配 |
+
+## 常见问题
+
+### Q: 提示 "请先在设置里填写 API Token"
+**A:** 你还没有填写 API 密钥。进入右上角「设置」，在 API Token 输入框中粘贴你的密钥（通常以 `sk-` 开头），然后点击「保存设置」。
+
+### Q: 发送消息后没有回复
+**A:** 检查以下几点：
+1. Base URL 是否正确（注意末尾是否多了或少了 `/v1`）
+2. API Token 是否有效（核对是否有空格，是否过期）
+3. Model 名称是否正确
+4. 手机是否联网
+
+### Q: 如何更换 API 服务商？
+**A:** 在设置中修改 Base URL 即可。只要服务商兼容 OpenAI 的 `/chat/completions` 格式，就可以直接使用。
+
+### Q: 清除聊天记录会删除 API Token 吗？
+**A:** 不会。API Token 和聊天记录是分开存储的，清除聊天记录不会影响你的设置。
+
+### Q: 我的聊天记录会上传到服务器吗？
+**A:** 不会。所有聊天记录只保存在你手机的本地存储中。只有向 AI API 发送当前对话内容时，消息才会被发送到你的 API 服务商。
+
+### Q: 如何在模拟器上运行？
+**A:** 先安装 Android Studio，创建一个模拟器，然后运行 `npm run android`。
 
 ## 常用命令
 
 ```bash
-npm run start            # 启动 Expo
-npm run android          # 在安卓设备/模拟器打开
-npm run typecheck        # TypeScript 类型检查
-npm run fix:deps         # 让 Expo 自动修复依赖版本
-npm run build:android:apk # 云端构建 APK
-npm run build:android:aab # 云端构建 AAB
+npm run start              # 启动 Expo 开发服务
+npm run android            # 在安卓设备/模拟器上打开
+npm run typecheck          # TypeScript 类型检查
+npm run fix:deps           # 自动修复依赖版本冲突
+npm run build:android:apk  # 云端构建 APK
+npm run build:android:aab  # 云端构建 AAB
 ```
+
+## 重要开发说明
+
+- 不添加登录认证（除非需求明确改变）
+- API Token 不保存到普通聊天记录中
+- 聊天记录仅本地存储，清除记录不影响 API Token
+- 发送按钮在生成过程中变为停止按钮，可中断长回复
+- 修改功能后需同步更新 `README.md` 和代码注释
+- 修改维护规范后需同步更新 `agent.md`
+- 不要手动在 `app.json` 中写入假的 EAS project ID
+- 当前 API 格式兼容 OpenAI，核心逻辑在 `src/api/chatApi.ts`
+- 真机可能不完全支持流式读取，代码已做兼容，可在设置中关闭
+- 流式 `TextDecoder` 类型声明位于 `src/api/chatApi.ts` 内部，不添加全局 `.d.ts`
+- 本地设置读取时通过归一化逻辑保证缺失字段自动退回默认值
