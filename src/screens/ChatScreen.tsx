@@ -359,7 +359,7 @@ export function ChatScreen({
         end={{ x: 1, y: 1 }}
         style={[styles.header, { borderBottomColor: theme.border }]}
       >
-        {/* 左侧：标题 + 当前 API */}
+        {/* 左侧：标题 + 快速切换模型按钮 */}
         <View style={styles.titleBlock}>
           <Text style={[styles.kicker, { color: theme.accentDark }]}>
             自定义 API CHAT
@@ -369,17 +369,17 @@ export function ChatScreen({
             style={styles.profileSelector}
           >
             <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Text style={[styles.subtitle, { color: theme.ink, fontWeight: "800", fontSize: 15 }]}>
-                {activeProfile ? activeProfile.name : "未配置 API"}
+              <Text style={[styles.modelBtn, { color: theme.ink }]}>
+                {activeProfile ? activeProfile.model : "未配置"}
               </Text>
-              {settings.apiProfiles.filter(p => p.enabled).length > 1 && (
-                <View style={[styles.switchBadge, { backgroundColor: theme.accent + "22" }]}>
-                  <ChevronDown color={theme.accent} size={12} />
-                </View>
-              )}
+              <ChevronDown
+                color={theme.accent}
+                size={14}
+                style={showProfileMenu ? { transform: [{ rotate: "180deg" }] } : {}}
+              />
             </View>
-            <Text style={[styles.modelHint, { color: theme.muted }]}>
-              {activeProfile ? activeProfile.model : ""}
+            <Text style={[styles.profileHint, { color: theme.muted }]}>
+              {activeProfile ? activeProfile.name : "请先配置 API"}
             </Text>
           </Pressable>
         </View>
@@ -557,6 +557,8 @@ const styles = StyleSheet.create({
   },
   screen: { flex: 1 },
   subtitle: { fontSize: 14, marginTop: 4 },
+  modelBtn: { fontSize: 18, fontWeight: "900" },
+  profileHint: { fontSize: 12, marginTop: 2 },
   switchBadge: {
     alignItems: "center",
     borderRadius: 10,
