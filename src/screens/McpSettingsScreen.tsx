@@ -295,24 +295,26 @@ export function McpSettingsScreen({
                       style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.ink }]}
                       value={editing.command}
                     />
-                    <Text style={[styles.label, { color: theme.muted }]}>启动参数</Text>
-                    <TextInput
-                      autoCapitalize="none"
-                      onChangeText={(args) => setEditing((p) => p ? { ...p, args } : p)}
-                      placeholder="-y @modelcontextprotocol/server-filesystem /tmp"
-                      placeholderTextColor={theme.muted}
-                      style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.ink }]}
-                      value={editing.args}
-                    />
-                    <Text style={[styles.label, { color: theme.muted }]}>环境变量（每行一个 KEY=VALUE）</Text>
+                    <Text style={[styles.label, { color: theme.muted }]}>启动参数（JSON 数组格式）</Text>
                     <TextInput
                       autoCapitalize="none"
                       multiline
-                      numberOfLines={3}
-                      onChangeText={(env) => setEditing((p) => p ? { ...p, env } : p)}
-                      placeholder="NODE_ENV=production"
+                      numberOfLines={4}
+                      onChangeText={(args) => setEditing((p) => p ? { ...p, args } : p)}
+                      placeholder='["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]'
                       placeholderTextColor={theme.muted}
-                      style={[styles.input, styles.multiline, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.ink }]}
+                      style={[styles.input, styles.multiline, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.ink, fontFamily: "monospace" }]}
+                      value={editing.args}
+                    />
+                    <Text style={[styles.label, { color: theme.muted }]}>环境变量（JSON 对象格式）</Text>
+                    <TextInput
+                      autoCapitalize="none"
+                      multiline
+                      numberOfLines={4}
+                      onChangeText={(env) => setEditing((p) => p ? { ...p, env } : p)}
+                      placeholder='{"NODE_ENV": "production", "API_KEY": "xxx"}'
+                      placeholderTextColor={theme.muted}
+                      style={[styles.input, styles.multiline, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.ink, fontFamily: "monospace" }]}
                       value={editing.env}
                     />
                   </>

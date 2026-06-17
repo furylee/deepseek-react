@@ -118,7 +118,7 @@ export function Drawer({
           <View style={[styles.header, { borderBottomColor: theme.border }]}>
             <View>
               <Text style={[styles.appName, { color: theme.ink }]}>
-                DeepSeek Custom
+                自定义 API 聊天
               </Text>
               <Text style={[styles.appDesc, { color: theme.muted }]}>
                 自定义 API · 本地存储
