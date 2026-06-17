@@ -77,7 +77,7 @@
 - 已完成所有修复: TextDecoder 异常处理、fetch 网络错误处理、复制失败捕获、读取流异常处理、全局 colors 赋值保护、存储异常兜底、旧版数据自动迁移
 - 最近更新：
   - 聊天页模型切换下拉始终可见 + 箭头旋转
-  - 新建聊天 Toast 提示 + react-native-simple-toast
+  - 新建聊天 Toast 提示 + 自定义 Toast 组件（顶部弹出，纯 Animated 实现）
 
 ## 依赖版本记录
 
@@ -93,4 +93,4 @@
 | react-native-safe-area-context | 5.6.0 | 安全区域适配 |
 | expo-linear-gradient | ~15.0.8 | 渐变背景 |
 | react-native-svg | 15.12.1 | SVG 渲染（图标库依赖） |
-| react-native-simple-toast | ^3.3.2 | Android Toast 提示 |
+| 自定义 Toast | src/components/Toast.tsx | 顶部弹出提示，纯 RN Animated API，不依赖第三方库 |

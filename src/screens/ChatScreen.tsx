@@ -25,12 +25,12 @@ import {
 import * as Clipboard from "expo-clipboard";
 import { LinearGradient } from "expo-linear-gradient";
 import { Check, ChevronDown, Menu, PenSquare } from "lucide-react-native";
-import Toast from "react-native-simple-toast";
 
 import { requestAssistantReply } from "../api/chatApi";
 import { ChatComposer } from "../components/ChatComposer";
 import { Drawer } from "../components/Drawer";
 import { MessageBubble } from "../components/MessageBubble";
+import { useToast } from "../components/Toast";
 import { useAppTheme } from "../contexts/ThemeContext";
 import { AppSettings, ChatMessage, ChatSession, getActiveProfile } from "../types";
 import { createMessage, makeSessionTitle } from "../utils/chat";
@@ -65,6 +65,7 @@ export function ChatScreen({
   onUpdateSession,
 }: ChatScreenProps) {
   const { colors: theme } = useAppTheme();
+  const toast = useToast();
   const abortRef = useRef<AbortController | null>(null);
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
   const [draft, setDraft] = useState("");
@@ -353,91 +354,109 @@ export function ChatScreen({
       />
 
       {/* ---- 顶部标题栏 ---- */}
-      <LinearGradient
-        colors={headerGradientColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.header, { borderBottomColor: theme.border }]}
-      >
-        {/* 左侧：标题 + 快速切换模型按钮 */}
-        <View style={styles.titleBlock}>
-          <Text style={[styles.kicker, { color: theme.accentDark }]}>
-            自定义 API CHAT
-          </Text>
-          <Pressable
-            onPress={() => setShowProfileMenu(!showProfileMenu)}
-            style={styles.profileSelector}
-          >
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Text style={[styles.modelBtn, { color: theme.ink }]}>
-                {activeProfile ? activeProfile.model : "未配置"}
-              </Text>
-              <ChevronDown
-                color={theme.accent}
-                size={14}
-                style={showProfileMenu ? { transform: [{ rotate: "180deg" }] } : {}}
-              />
-            </View>
-            <Text style={[styles.profileHint, { color: theme.muted }]}>
-              {activeProfile ? activeProfile.name : "请先配置 API"}
+      <View style={styles.headerContainer}>
+        <LinearGradient
+          colors={headerGradientColors}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.header, { borderBottomColor: theme.border }]}
+        >
+          {/* 左侧：标题 + 快速切换模型按钮 */}
+          <View style={styles.titleBlock}>
+            <Text style={[styles.kicker, { color: theme.accentDark }]}>
+              自定义 API CHAT
             </Text>
-          </Pressable>
-        </View>
-
-        {/* 右侧：新建对话 + 菜单图标 */}
-        <View style={styles.headerIcons}>
-          <Pressable
-            accessibilityLabel="新建对话"
-            onPress={() => {
-              onCreateSession();
-              Toast.show("已创建新对话", Toast.SHORT);
-            }}
-            style={styles.iconBtn}
-          >
-            <PenSquare color={theme.ink} size={20} />
-          </Pressable>
-          <Pressable
-            accessibilityLabel="打开菜单"
-            onPress={() => setDrawerOpen(true)}
-            style={styles.iconBtn}
-          >
-            <Menu color={theme.ink} size={22} />
-          </Pressable>
-        </View>
-      </LinearGradient>
-
-      {/* ---- API 配置下拉菜单 ---- */}
-      {showProfileMenu && settings.apiProfiles.filter(p => p.enabled).length > 0 && (
-        <View style={[styles.profileMenu, { backgroundColor: theme.surface, borderColor: theme.border, shadowColor: theme.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 1, shadowRadius: 12, elevation: 6 }]}>
-          {settings.apiProfiles.filter(p => p.enabled).map((profile) => {
-            const isActive = profile.id === settings.activeProfileId;
-            return (
-              <Pressable
-                key={profile.id}
-                onPress={() => {
-                  onSwitchProfile?.(profile.id);
-                  setShowProfileMenu(false);
-                }}
-                style={[
-                  styles.profileMenuItem,
-                  { borderBottomColor: theme.border },
-                  isActive && { backgroundColor: theme.surfaceAlt },
-                ]}
+            <Pressable
+              onPress={() => setShowProfileMenu(!showProfileMenu)}
+              style={styles.profileSelector}
+            >
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1 }}>
+                <Text
+                  style={[styles.modelBtn, { color: theme.ink }]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {activeProfile ? activeProfile.model : "未配置"}
+                </Text>
+                <ChevronDown
+                  color={theme.accent}
+                  size={14}
+                  style={showProfileMenu ? { transform: [{ rotate: "180deg" }] } : {}}
+                />
+              </View>
+              <Text
+                style={[styles.profileHint, { color: theme.muted }]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
               >
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.profileMenuName, { color: theme.ink }]}>
-                    {profile.name}
-                  </Text>
-                  <Text style={[styles.profileMenuDetail, { color: theme.muted }]}>
-                    {profile.model}
-                  </Text>
-                </View>
-                {isActive && <Check color={theme.accent} size={16} />}
-              </Pressable>
-            );
-          })}
-        </View>
-      )}
+                {activeProfile ? activeProfile.name : "请先配置 API"}
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* 右侧：新建对话 + 菜单图标 */}
+          <View style={styles.headerIcons}>
+            <Pressable
+              accessibilityLabel="新建对话"
+              onPress={() => {
+                onCreateSession();
+                toast.show({ message: "已创建新对话" });
+              }}
+              style={styles.iconBtn}
+            >
+              <PenSquare color={theme.ink} size={20} />
+            </Pressable>
+            <Pressable
+              accessibilityLabel="打开菜单"
+              onPress={() => setDrawerOpen(true)}
+              style={styles.iconBtn}
+            >
+              <Menu color={theme.ink} size={22} />
+            </Pressable>
+          </View>
+        </LinearGradient>
+
+        {/* ---- API 配置下拉菜单（浮层） ---- */}
+        {showProfileMenu && settings.apiProfiles.filter(p => p.enabled).length > 0 && (
+          <View style={[styles.profileMenu, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            {settings.apiProfiles.filter(p => p.enabled).map((profile) => {
+              const isActive = profile.id === settings.activeProfileId;
+              return (
+                <Pressable
+                  key={profile.id}
+                  onPress={() => {
+                    onSwitchProfile?.(profile.id);
+                    setShowProfileMenu(false);
+                  }}
+                  style={[
+                    styles.profileMenuItem,
+                    { borderBottomColor: theme.border },
+                    isActive && { backgroundColor: theme.surfaceAlt },
+                  ]}
+                >
+                  <View style={styles.profileMenuItemText}>
+                    <Text
+                      style={[styles.profileMenuName, { color: theme.ink }]}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      {profile.name}
+                    </Text>
+                    <Text
+                      style={[styles.profileMenuDetail, { color: theme.muted }]}
+                      numberOfLines={1}
+                      ellipsizeMode="tail"
+                    >
+                      {profile.model}
+                    </Text>
+                  </View>
+                  {isActive && <Check color={theme.accent} size={16} />}
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
+      </View>
 
       {/* ---- 消息列表 ---- */}
       <FlatList
@@ -470,6 +489,11 @@ export function ChatScreen({
               item.role === "assistant" && !item.isError
                 ? handleRegenerate
                 : undefined
+            }
+            isStreaming={
+              isSending &&
+              item.role === "assistant" &&
+              item.id === activeSession.messages[activeSession.messages.length - 1]?.id
             }
           />
         )}
@@ -522,6 +546,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 20,
   },
+  headerContainer: { position: "relative", zIndex: 10 },
   headerIcons: {
     flexDirection: "row",
     gap: 4,
@@ -538,7 +563,22 @@ const styles = StyleSheet.create({
   messageList: { padding: 14, paddingBottom: 20 },
   profileMenu: {
     borderBottomWidth: 1,
-    maxHeight: 200,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderBottomLeftRadius: 12,
+    borderBottomRightRadius: 12,
+    left: 0,
+    maxHeight: 220,
+    overflow: "hidden",
+    position: "absolute",
+    right: 0,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    top: "100%",
+    zIndex: 20,
   },
   profileMenuDetail: { fontSize: 12, marginTop: 2 },
   profileMenuItem: {
@@ -549,6 +589,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 12,
   },
+  profileMenuItemText: { flex: 1, minWidth: 0 },
   profileMenuName: { fontSize: 14, fontWeight: "700" },
   profileSelector: {
     alignItems: "center",

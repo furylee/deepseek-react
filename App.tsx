@@ -20,6 +20,7 @@ import { ChatScreen } from "./src/screens/ChatScreen";
 import { SettingsScreen } from "./src/screens/SettingsScreen";
 import { McpSettingsScreen } from "./src/screens/McpSettingsScreen";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
+import { ToastProvider } from "./src/components/Toast";
 import { ThemeProvider, useAppTheme } from "./src/contexts/ThemeContext";
 import { createEmptySession, createWelcomeSession } from "./src/utils/chat";
 import { loadSessions, saveSessions } from "./src/storage/chatStorage";
@@ -231,7 +232,9 @@ export default function App() {
   return (
     <ThemeProvider initialMode={initialThemeMode}>
       <ErrorBoundary>
-        <AppContent />
+        <ToastProvider>
+          <AppContent />
+        </ToastProvider>
       </ErrorBoundary>
     </ThemeProvider>
   );

@@ -137,7 +137,7 @@ function parseSseLine(line: string) {
  *   1. 如果 response.body 支持 getReader()，按行读取 SSE 数据，
  *      每解析出一段文本就调用 onDelta 回调。
  *   2. 如果不支持（部分旧版 React Native 环境），
- *      等待整个响应结束后一次性解析所有 SSE 行。
+ *      等待整个响应结束后一次性解析所有 SSE 行，但仍逐行回调 onDelta。
  *   3. TextDecoder 不存在时用 String.fromCharCode 兜底。
  *   4. 流读取过程中网络断开时，返回已收到的内容而不崩溃。
  */
@@ -155,22 +155,19 @@ async function readStreamingResponse(
     // 获取 reader 失败，走回退路径
   }
 
-  // 路径 A：不支持流式读取，等全部返回后再解析
+  // 路径 A：不支持流式读取，等全部返回后再逐行回调
   if (!reader) {
     const text = await response.text();
-    return text
-      .split("\n")
-      .map(parseSseLine)
-      .join("");
-  }
-
-  // 路径 A：不支持流式读取，等全部返回后再解析
-  if (!reader) {
-    const text = await response.text();
-    return text
-      .split("\n")
-      .map(parseSseLine)
-      .join("");
+    let fullText = "";
+    const lines = text.split("\n");
+    for (const line of lines) {
+      const delta = parseSseLine(line.trim());
+      if (delta) {
+        fullText += delta;
+        onDelta(delta);
+      }
+    }
+    return fullText;
   }
 
   // 路径 B：真流式读取

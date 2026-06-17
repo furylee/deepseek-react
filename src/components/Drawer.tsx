@@ -35,8 +35,8 @@ import { useAppTheme } from "../contexts/ThemeContext";
 import { ChatSession } from "../types";
 import { formatSessionTime } from "../utils/chat";
 
-const SCREEN_WIDTH = Dimensions.get("window").width;
-const DRAWER_WIDTH = SCREEN_WIDTH * 0.78;
+const SCREEN_HEIGHT = Dimensions.get("window").height;
+const DRAWER_HEIGHT = SCREEN_HEIGHT * 0.75;
 
 type DrawerProps = {
   visible: boolean;
@@ -72,23 +72,23 @@ export function Drawer({
   onClearAll,
 }: DrawerProps) {
   const { colors: theme } = useAppTheme();
-  const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
+  const translateY = useRef(new Animated.Value(-DRAWER_HEIGHT)).current;
 
   useEffect(() => {
     if (visible) {
-      Animated.timing(translateX, {
+      Animated.timing(translateY, {
         toValue: 0,
-        duration: 250,
+        duration: 300,
         useNativeDriver: true,
       }).start();
     } else {
-      Animated.timing(translateX, {
-        toValue: -DRAWER_WIDTH,
+      Animated.timing(translateY, {
+        toValue: -DRAWER_HEIGHT,
         duration: 200,
         useNativeDriver: true,
       }).start();
     }
-  }, [visible, translateX]);
+  }, [visible, translateY]);
 
   if (!visible) return null;
 
@@ -105,15 +105,15 @@ export function Drawer({
           <View style={styles.backdrop} />
         </TouchableWithoutFeedback>
 
-        {/* 抽屉面板 */}
+        {/* 抽屉面板 —— 从顶部滑入 */}
         <Animated.View
           style={[
             styles.drawer,
             {
               backgroundColor: theme.surface,
-              borderRightColor: theme.border,
-              transform: [{ translateX }],
-              width: DRAWER_WIDTH,
+              borderBottomColor: theme.border,
+              transform: [{ translateY }],
+              height: DRAWER_HEIGHT,
             },
           ]}
         >
@@ -336,13 +336,13 @@ const styles = StyleSheet.create({
     padding: 6,
   },
   drawer: {
-    borderRightWidth: 1,
-    flex: 1,
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
+    borderBottomWidth: 1,
     left: 0,
-    maxWidth: DRAWER_WIDTH,
     position: "absolute",
+    right: 0,
     top: 0,
-    bottom: 0,
   },
   emptyText: {
     fontSize: 13,

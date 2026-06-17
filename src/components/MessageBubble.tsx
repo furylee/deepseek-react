@@ -11,8 +11,8 @@
 //   - 响应深色/浅色主题
 // ============================================================
 
-import { useCallback, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 import Markdown from "react-native-markdown-display";
 
 import { ChatMessage } from "../types";
@@ -25,12 +25,15 @@ type MessageBubbleProps = {
   /** 长按 AI 消息时的回调，用于展示操作菜单 */
   onCopy?: (text: string) => void;
   onRegenerate?: () => void;
+  /** 当助手消息正在流式输出时显示 loading 指示器 */
+  isStreaming?: boolean;
 };
 
 export function MessageBubble({
   message,
   onCopy,
   onRegenerate,
+  isStreaming,
 }: MessageBubbleProps) {
   const { colors: theme } = useAppTheme();
   const isUser = message.role === "user";
@@ -48,6 +51,9 @@ export function MessageBubble({
     setShowActions(false);
   }, []);
 
+  // 是否显示 loading 指示器：助手消息无内容且正在流式输出
+  const showLoading = isAssistant && !message.isError && !message.content && isStreaming;
+
   return (
     <View>
       <View style={[styles.row, isUser && styles.userRow]}>
@@ -61,7 +67,9 @@ export function MessageBubble({
             message.isError && { backgroundColor: "#FFF2F0", borderColor: "#FFB4AC" },
           ]}
         >
-          {isAssistant && !message.isError ? (
+          {showLoading ? (
+            <LoadingDots color={theme.muted} />
+          ) : isAssistant && !message.isError ? (
             <Markdown key={message.id} style={makeMarkdownStyles(theme)}>
               {message.content || " "}
             </Markdown>
@@ -91,6 +99,75 @@ export function MessageBubble({
     </View>
   );
 }
+
+// ---- 三个跳动点 loading 指示器 ----
+
+function LoadingDots({ color }: { color: string }) {
+  const animValues = useRef([
+    new Animated.Value(0),
+    new Animated.Value(0),
+    new Animated.Value(0),
+  ]).current;
+
+  useEffect(() => {
+    const animations = animValues.map((anim, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 200),
+          Animated.timing(anim, {
+            toValue: 1,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.timing(anim, {
+            toValue: 0,
+            duration: 400,
+            useNativeDriver: true,
+          }),
+          Animated.delay((2 - i) * 200),
+        ])
+      )
+    );
+    Animated.parallel(animations).start();
+    return () => {
+      animValues.forEach(a => a.setValue(0));
+    };
+  }, []);
+
+  return (
+    <View style={loadingDotsStyles.row}>
+      {animValues.map((anim, i) => {
+        const translateY = anim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0, -6],
+        });
+        return (
+          <Animated.View
+            key={i}
+            style={[
+              loadingDotsStyles.dot,
+              { backgroundColor: color, transform: [{ translateY }] },
+            ]}
+          />
+        );
+      })}
+    </View>
+  );
+}
+
+const loadingDotsStyles = StyleSheet.create({
+  dot: {
+    borderRadius: 3,
+    height: 6,
+    width: 6,
+  },
+  row: {
+    flexDirection: "row",
+    gap: 5,
+    justifyContent: "center",
+    paddingVertical: 4,
+  },
+});
 
 // ---- 样式 ----
 
