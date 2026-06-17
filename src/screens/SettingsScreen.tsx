@@ -36,7 +36,6 @@ import {
   ChevronDown,
   ChevronUp,
   Cpu,
-  Download,
   Monitor,
   Moon,
   Pencil,
@@ -502,7 +501,7 @@ export function SettingsScreen({
                         {loadingModels ? (
                           <ActivityIndicator color="#FFF" size="small" />
                         ) : (
-                          <Download color="#FFF" size={16} />
+                          <Search color="#FFF" size={16} />
                         )}
                       </Pressable>
                     </View>
