@@ -25,6 +25,7 @@ import {
 import * as Clipboard from "expo-clipboard";
 import { LinearGradient } from "expo-linear-gradient";
 import { Check, ChevronDown, Menu, PenSquare } from "lucide-react-native";
+import Toast from "react-native-simple-toast";
 
 import { requestAssistantReply } from "../api/chatApi";
 import { ChatComposer } from "../components/ChatComposer";
@@ -387,7 +388,10 @@ export function ChatScreen({
         <View style={styles.headerIcons}>
           <Pressable
             accessibilityLabel="新建对话"
-            onPress={onCreateSession}
+            onPress={() => {
+              onCreateSession();
+              Toast.show("已创建新对话", Toast.SHORT);
+            }}
             style={styles.iconBtn}
           >
             <PenSquare color={theme.ink} size={20} />
