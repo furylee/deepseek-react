@@ -9,8 +9,14 @@
     "typecheck": "tsc --noEmit",
     "fix:deps": "expo install --fix",
     "prebuild:android": "expo prebuild --platform android",
-    "build:android:apk": "eas build -p android --profile preview",
-    "build:android:aab": "eas build -p android --profile production"
+    "build:android:dev": "eas build -p android --profile development",
+    "build:android:preview": "eas build -p android --profile preview",
+    "build:android:prod": "eas build -p android --profile production",
+    "build:ios:dev": "eas build -p ios --profile development",
+    "build:ios:preview": "eas build -p ios --profile preview",
+    "build:ios:prod": "eas build -p ios --profile production",
+    "build:all:preview": "eas build --profile preview --platform all",
+    "build:all:prod": "eas build --profile production --platform all"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
