@@ -407,8 +407,8 @@ export function ChatScreen({
       </LinearGradient>
 
       {/* ---- API 配置下拉菜单 ---- */}
-      {showProfileMenu && settings.apiProfiles.filter(p => p.enabled).length > 1 && (
-        <View style={[styles.profileMenu, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+      {showProfileMenu && settings.apiProfiles.filter(p => p.enabled).length > 0 && (
+        <View style={[styles.profileMenu, { backgroundColor: theme.surface, borderColor: theme.border, shadowColor: theme.shadow, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 1, shadowRadius: 12, elevation: 6 }]}>
           {settings.apiProfiles.filter(p => p.enabled).map((profile) => {
             const isActive = profile.id === settings.activeProfileId;
             return (
@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 38,
   },
-  kicker: { fontSize: 12, fontWeight: "800" },
+  kicker: { fontSize: 12, fontWeight: "800", marginRight: 4 },
   messageList: { padding: 14, paddingBottom: 20 },
   profileMenu: {
     borderBottomWidth: 1,
@@ -559,14 +559,6 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 14, marginTop: 4 },
   modelBtn: { fontSize: 18, fontWeight: "900" },
   profileHint: { fontSize: 12, marginTop: 2 },
-  switchBadge: {
-    alignItems: "center",
-    borderRadius: 10,
-    height: 20,
-    justifyContent: "center",
-    width: 20,
-  },
-  modelHint: { fontSize: 12, marginTop: 2 },
   title: { fontSize: 30, fontWeight: "900", marginTop: 4 },
   titleBlock: { flex: 1, gap: 2 },
   tokenHint: { fontSize: 13, fontWeight: "700", textAlign: "center" },
