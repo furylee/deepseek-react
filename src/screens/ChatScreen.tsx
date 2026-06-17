@@ -403,9 +403,9 @@ export function ChatScreen({
       </LinearGradient>
 
       {/* ---- API 配置下拉菜单 ---- */}
-      {showProfileMenu && settings.apiProfiles.length > 1 && (
+      {showProfileMenu && settings.apiProfiles.filter(p => p.enabled).length > 1 && (
         <View style={[styles.profileMenu, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-          {settings.apiProfiles.map((profile) => {
+          {settings.apiProfiles.filter(p => p.enabled).map((profile) => {
             const isActive = profile.id === settings.activeProfileId;
             return (
               <Pressable

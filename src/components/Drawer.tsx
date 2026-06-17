@@ -267,24 +267,25 @@ export function Drawer({
 
           {/* 底部提示 + 清空聊天按钮 */}
           <View style={[styles.footer, { borderTopColor: theme.border }]}>
-            <Text style={[styles.footerText, { color: theme.muted }]}>
-              {sessions.length} 个对话 · 本地存储
-            </Text>
-            {sessions.length > 0 && (
-              <Pressable
-                onPress={onClearAll}
-                style={({ pressed }) => [
-                  styles.clearBtn,
-                  { borderColor: theme.coral },
-                  pressed && { backgroundColor: theme.coral + "18" },
-                ]}
-              >
-                <Trash2 color={theme.coral} size={12} />
-                <Text style={[styles.clearBtnText, { color: theme.coral }]}>
-                  清空所有记录
-                </Text>
-              </Pressable>
-            )}
+            <View style={styles.footerRow}>
+              <Text style={[styles.footerText, { color: theme.muted }]}>
+                {sessions.length} 个对话 · 本地存储
+              </Text>
+              {sessions.length > 0 && onClearAll && (
+                <Pressable
+                  onPress={onClearAll}
+                  style={({ pressed }) => [
+                    styles.clearBtn,
+                    { borderColor: theme.border },
+                    pressed && { backgroundColor: theme.surfaceAlt },
+                  ]}
+                >
+                  <Text style={[styles.clearBtnText, { color: theme.muted }]}>
+                    清空记录
+                  </Text>
+                </Pressable>
+              )}
+            </View>
           </View>
         </Animated.View>
       </View>
@@ -349,8 +350,12 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   footer: {
-    borderTopWidth: 1,
     padding: 14,
+  },
+  footerRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   footerText: {
     fontSize: 11,
