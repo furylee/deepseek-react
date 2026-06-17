@@ -75,6 +75,9 @@
 - API 预设: DeepSeek / OpenAI / 硅基流动 / 智谱 AI / 月之暗面 / 通义千问 6 个预设
 - 模型列表: 支持从 API 获取模型下拉选择 + 手动输入
 - 已完成所有修复: TextDecoder 异常处理、fetch 网络错误处理、复制失败捕获、读取流异常处理、全局 colors 赋值保护、存储异常兜底、旧版数据自动迁移
+- 最近更新：
+  - 聊天页模型切换下拉始终可见 + 箭头旋转
+  - 新建聊天 Toast 提示 + react-native-simple-toast
 
 ## 依赖版本记录
 
@@ -90,4 +93,4 @@
 | react-native-safe-area-context | 5.6.0 | 安全区域适配 |
 | expo-linear-gradient | ~15.0.8 | 渐变背景 |
 | react-native-svg | 15.12.1 | SVG 渲染（图标库依赖） |
-| react-native-svg | ~15.15.5 | SVG 渲染（图标库依赖） |
+| react-native-simple-toast | ^3.3.2 | Android Toast 提示 |
