@@ -25,8 +25,18 @@ import { AppSettings, ChatMessage } from "../types";
 // 内部类型定义（不导出，只在这个文件内使用）
 // ----------------------------------------------------------
 
+/** 请求时需要的设置子集（兼容 AppSettings 的旧字段和新字段） */
+type RequestSettings = {
+  baseUrl: string;
+  apiToken: string;
+  model: string;
+  temperature: number;
+  maxTokens: number;
+  stream: boolean;
+};
+
 type CompletionOptions = {
-  settings: AppSettings;
+  settings: RequestSettings;
   messages: ChatMessage[];
   /** 用于取消请求的 AbortSignal */
   signal?: AbortSignal;
@@ -240,7 +250,12 @@ export async function requestAssistantReply({
   messages,
   signal,
   onDelta,
-}: CompletionOptions) {
+}: {
+  settings: RequestSettings;
+  messages: ChatMessage[];
+  signal?: AbortSignal;
+  onDelta?: (delta: string) => void;
+}) {
   // 没有 API Token 直接报错，让用户去设置
   if (!settings.apiToken.trim()) {
     throw new Error("请先在设置里填写 API Token。");

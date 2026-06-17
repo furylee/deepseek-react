@@ -6,6 +6,7 @@
 //   1. 启动时从本地存储加载设置和聊天记录
 //   2. 管理聊天页 / 设置页之间的切换
 //   3. 提供全局主题上下文
+//   4. 管理 Token map（每个 API 配置组独立存储 Token）
 //
 // 如果你要添加新的全局状态，通常在这里管理，然后通过 props 下传。
 // ============================================================
@@ -17,13 +18,17 @@ import { StatusBar } from "expo-status-bar";
 
 import { ChatScreen } from "./src/screens/ChatScreen";
 import { SettingsScreen } from "./src/screens/SettingsScreen";
+import { McpSettingsScreen } from "./src/screens/McpSettingsScreen";
 import { ErrorBoundary } from "./src/components/ErrorBoundary";
 import { ThemeProvider, useAppTheme } from "./src/contexts/ThemeContext";
 import { createEmptySession, createWelcomeSession } from "./src/utils/chat";
 import { loadSessions, saveSessions } from "./src/storage/chatStorage";
-import { loadSettings, saveSettings } from "./src/storage/settingsStorage";
+import { loadSettings, saveSettings, getTokenForProfile } from "./src/storage/settingsStorage";
 import { AppSettings, ChatSession } from "./src/types";
 import { loadThemeMode } from "./src/storage/themeStorage";
+
+/** Token map 类型：{ [profileId]: apiToken } */
+type TokenMap = Record<string, string>;
 
 // ----------------------------------------------------------
 // AppContent — 在 ThemeProvider 内部渲染实际 UI
@@ -31,16 +36,17 @@ import { loadThemeMode } from "./src/storage/themeStorage";
 // ----------------------------------------------------------
 function AppContent() {
   const { colors: theme } = useAppTheme();
-  const [activeTab, setActiveTab] = useState<"chat" | "settings">("chat");
+  const [activeTab, setActiveTab] = useState<"chat" | "settings" | "mcp">("chat");
   const [isBooting, setIsBooting] = useState(true);
   const [settings, setSettings] = useState<AppSettings | null>(null);
+  const [tokens, setTokens] = useState<TokenMap>({});
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string>("");
 
   // ---- 启动：加载本地数据 ----
   useEffect(() => {
     async function boot() {
-      const [savedSettings, savedSessions] = await Promise.all([
+      const [{ settings: savedSettings, tokens: savedTokens }, savedSessions] = await Promise.all([
         loadSettings(),
         loadSessions(),
       ]);
@@ -50,6 +56,7 @@ function AppContent() {
         savedSessions.length > 0 ? savedSessions : [createWelcomeSession()];
 
       setSettings(savedSettings);
+      setTokens(savedTokens);
       setSessions(initialSessions);
       setActiveSessionId(initialSessions[0].id);
       setIsBooting(false);
@@ -74,18 +81,25 @@ function AppContent() {
     [activeSessionId, sessions]
   );
 
-  // ---- 保存设置 ----
-  const updateSettings = useCallback(async (nextSettings: AppSettings) => {
+  // ---- 获取当前激活 profile 的 Token ----
+  const activeApiToken = useMemo(() => {
+    if (!settings) return "";
+    return getTokenForProfile(tokens, settings.activeProfileId);
+  }, [settings, tokens]);
+
+  // ---- 保存设置 + Token ----
+  const updateSettings = useCallback(async (nextSettings: AppSettings, nextTokens?: TokenMap) => {
+    const mergedTokens = nextTokens ?? tokens;
     setSettings(nextSettings);
-    await saveSettings(nextSettings);
-  }, []);
+    setTokens(mergedTokens);
+    await saveSettings(nextSettings, mergedTokens);
+  }, [tokens]);
 
   // ---- 更新单个会话 ----
   const updateSession = useCallback((nextSession: ChatSession) => {
     setSessions((current) =>
       current
         .map((session) => (session.id === nextSession.id ? nextSession : session))
-        // 按更新时间排序，最近聊过的放前面
         .sort((left, right) => right.updatedAt - left.updatedAt)
     );
     setActiveSessionId(nextSession.id);
@@ -103,7 +117,6 @@ function AppContent() {
   const removeSession = useCallback((sessionId: string) => {
     setSessions((current) => {
       const remaining = current.filter((session) => session.id !== sessionId);
-      // 至少保留一个会话
       const nextSessions = remaining.length > 0 ? remaining : [createEmptySession()];
       setActiveSessionId(nextSessions[0].id);
       return nextSessions;
@@ -129,7 +142,6 @@ function AppContent() {
     );
   }
 
-  // 根据当前主题决定 StatusBar 样式
   const isDark = theme.ink === "#EEF2FA";
 
   return (
@@ -141,18 +153,37 @@ function AppContent() {
             activeSession={activeSession}
             allSessions={sessions}
             settings={settings}
+            activeApiToken={activeApiToken}
+            onSwitchProfile={(profileId) => {
+              setSettings((s) => s ? { ...s, activeProfileId: profileId } : s);
+              saveSettings(
+                { ...settings, activeProfileId: profileId },
+                tokens
+              ).catch(console.error);
+            }}
             onCreateSession={createSession}
             onDeleteSession={removeSession}
             onOpenSettings={() => setActiveTab("settings")}
+            onOpenMcpSettings={() => setActiveTab("mcp")}
             onSelectSession={setActiveSessionId}
             onUpdateSession={updateSession}
           />
-        ) : (
+        ) : activeTab === "settings" ? (
           <SettingsScreen
             settings={settings}
+            tokens={tokens}
             onBack={() => setActiveTab("chat")}
             onClearAllSessions={clearAllSessions}
             onSaveSettings={updateSettings}
+          />
+        ) : (
+          <McpSettingsScreen
+            settings={settings}
+            onBack={() => setActiveTab("chat")}
+            onSaveSettings={(next) => {
+              setSettings(next);
+              saveSettings(next, tokens).catch(console.error);
+            }}
           />
         )}
       </SafeAreaView>
@@ -175,7 +206,6 @@ export default function App() {
       })
       .catch((error) => {
         console.error("读取主题模式失败：", error);
-        // 使用默认值 "system" 继续
       })
       .finally(() => {
         setThemeReady(true);

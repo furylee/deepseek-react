@@ -111,9 +111,11 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.98 }],
   },
   sendButton: {
+    alignSelf: "flex-end",
     borderRadius: 8,
     marginBottom: 8,
     marginRight: 8,
+    marginTop: 8,
   },
   sendGradient: {
     alignItems: "center",
