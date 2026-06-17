@@ -154,7 +154,7 @@ npm run build:android:aab
 
 | 技术 | 说明 |
 |------|------|
-| Expo SDK 56 | React Native 开发框架 |
+| Expo SDK 54 | React Native 开发框架 |
 | TypeScript 5 | 带类型检查的 JavaScript |
 | AsyncStorage | 聊天记录本地存储 |
 | expo-secure-store | API Token 加密存储 |

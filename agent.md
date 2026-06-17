@@ -63,13 +63,14 @@
 
 | 依赖 | 当前版本 | 说明 |
 |------|---------|------|
-| expo | ~56.0.12 | Expo SDK 56 |
-| react-native | ~0.86.0 | React Native 核心 |
-| lucide-react-native | ^1.18.0 | 图标库（v1，API 与 v0.x 可能不同） |
+| expo | ~54.0.0 | Expo SDK 54（适配 Expo Go 54.0.8） |
+| react-native | 0.81.5 | React Native 核心 |
+| lucide-react-native | ^0.577.0 | 图标库 |
 | react-native-markdown-display | ^7.0.2 | Markdown 渲染 |
-| @react-native-async-storage/async-storage | ^3.1.1 | 聊天记录本地存储 |
-| expo-secure-store | ~56.0.4 | API Token 加密存储 |
-| expo-clipboard | ^56.0.4 | 消息复制到剪贴板 |
-| react-native-safe-area-context | ~5.8.0 | 安全区域适配 |
-| expo-linear-gradient | ~56.0.4 | 渐变背景 |
+| @react-native-async-storage/async-storage | 2.2.0 | 聊天记录本地存储 |
+| expo-secure-store | ~15.0.8 | API Token 加密存储 |
+| expo-clipboard | ~8.0.8 | 消息复制到剪贴板 |
+| react-native-safe-area-context | 5.6.0 | 安全区域适配 |
+| expo-linear-gradient | ~15.0.8 | 渐变背景 |
+| react-native-svg | 15.12.1 | SVG 渲染（图标库依赖） |
 | react-native-svg | ~15.15.5 | SVG 渲染（图标库依赖） |
