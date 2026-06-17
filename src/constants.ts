@@ -62,3 +62,37 @@ export const STORAGE_KEYS = {
   /** 旧版单 Token key（保留用于迁移） */
   apiTokenLegacy: "deepseek-custom.api-token.v1",
 } as const;
+
+/** 常见 API 大厂预设配置 — 点击即可快速填入 */
+export const API_PRESETS = [
+  {
+    name: "DeepSeek 官方",
+    baseUrl: "https://api.deepseek.com/v1",
+    modelHint: "deepseek-chat",
+  },
+  {
+    name: "OpenAI",
+    baseUrl: "https://api.openai.com/v1",
+    modelHint: "gpt-4o",
+  },
+  {
+    name: "硅基流动",
+    baseUrl: "https://api.siliconflow.cn/v1",
+    modelHint: "deepseek-ai/DeepSeek-V3",
+  },
+  {
+    name: "智谱 AI",
+    baseUrl: "https://open.bigmodel.cn/api/paas/v4",
+    modelHint: "glm-4",
+  },
+  {
+    name: "月之暗面",
+    baseUrl: "https://api.moonshot.cn/v1",
+    modelHint: "moonshot-v1-8k",
+  },
+  {
+    name: "阿里通义千问",
+    baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    modelHint: "qwen-plus",
+  },
+] as const;

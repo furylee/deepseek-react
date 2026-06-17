@@ -58,6 +58,21 @@
 - 修改 `app.json` 的安卓包名、版本号或 EAS 配置后，必须在 README 里说明。
 - 不要手写占位的 EAS project id；首次构建时让 EAS 自动初始化项目配置。
 - 新增 Expo 模块依赖（如 `expo-*`）时，注意版本号要与 Expo SDK 主版本号对齐。
+- 修改 `app.json` 的安卓包名、版本号或 EAS 配置后，必须在 README 里说明。
+- 不要手写占位的 EAS project id；首次构建时让 EAS 自动初始化项目配置。
+
+## 项目当前状态（更新于 2026/06/17）
+
+- Expo SDK: **54**（兼容 Expo Go 54.0.8）
+- 主屏幕: `ChatScreen` — 聊天界面（侧滑抽屉 + 消息列表 + 底部输入框）
+- 侧滑抽屉: `Drawer` — 新建对话 / 历史记录 / API 设置 / MCP 设置
+- 设置页: `SettingsScreen` — 多 API 配置（名称/URL/Token/Model/启用开关/MCP绑定）+ 生成参数 + 外观
+- MCP 设置: `McpSettingsScreen` — MCP 服务 CRUD + 连接测试（启动自动检测 + 手动测试按钮 + 绿/红状态）
+- 消息操作: `MessageBubble` — 长按复制 + 重新生成
+- 主题: `ThemeContext` — 浅色/深色/跟随系统
+- 类型: `ApiProfile`(id, name, baseUrl, model, enabled) + `McpServer`(id, name, transport, command, args, url, env)
+- Token: 每个 API profile 独立 Token，存储在 SecureStore 的 JSON map 中
+- 已完成所有修复: TextDecoder 异常处理、fetch 网络错误处理、复制失败捕获、读取流异常处理、全局 colors 赋值保护、存储异常兜底、旧版数据自动迁移
 
 ## 依赖版本记录
 
