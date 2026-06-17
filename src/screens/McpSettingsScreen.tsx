@@ -8,13 +8,13 @@
 //   - sse: 远程 URL
 // ============================================================
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
   TextInput,
   View,
@@ -24,16 +24,20 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
-  Cpu,
   Globe,
+  Plug,
   Plus,
+  RefreshCw,
   Terminal,
   Trash2,
+  Wifi,
+  WifiOff,
   X,
 } from "lucide-react-native";
 import { useAppTheme } from "../contexts/ThemeContext";
 import { AppSettings, McpServer } from "../types";
 import { createId } from "../utils/chat";
+import { McpStatusMap, testAllMcpConnections, testMcpConnection } from "../utils/mcpTest";
 
 type McpSettingsScreenProps = {
   settings: AppSettings;
@@ -48,9 +52,34 @@ export function McpSettingsScreen({
 }: McpSettingsScreenProps) {
   const { colors: theme } = useAppTheme();
   const [form, setForm] = useState<AppSettings>(settings);
+  const [mcpStatuses, setMcpStatuses] = useState<McpStatusMap>({});
+  const [testingId, setTestingId] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<McpServer | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // ---- 启动时测试所有 MCP ----
+  useEffect(() => {
+    testAllMcpConnections(form.mcpServers).then(setMcpStatuses);
+  }, []);
+
+  // ---- 获取状态颜色 ----
+  function statusColor(status: string | undefined) {
+    if (status === "online") return "#22C55E";
+    if (status === "offline") return "#EF4444";
+    return theme.muted; // unknown
+  }
+
+  // ---- 测试单个服务 ----
+  async function testOne(server: McpServer) {
+    setTestingId(server.id);
+    try {
+      const status = await testMcpConnection(server);
+      setMcpStatuses((prev) => ({ ...prev, [server.id]: status }));
+    } finally {
+      setTestingId(null);
+    }
+  }
 
   // ---- 新建 ----
   function startNew() {
@@ -79,7 +108,7 @@ export function McpSettingsScreen({
     setEditing(null);
   }
 
-  // ---- 保存编辑 ----
+  // ---- 保存编辑（并自动测试连接） ----
   function saveServer() {
     if (!editing) return;
     const name = editing.name.trim();
@@ -96,16 +125,20 @@ export function McpSettingsScreen({
       return;
     }
 
+    const saved: McpServer = { ...editing, name, command: editing.command.trim(), url: editing.url.trim() };
+
     setForm((prev) => {
-      const exists = prev.mcpServers.some((s) => s.id === editing.id);
+      const exists = prev.mcpServers.some((s) => s.id === saved.id);
       return {
         ...prev,
         mcpServers: exists
-          ? prev.mcpServers.map((s) => (s.id === editing.id ? editing : s))
-          : [...prev.mcpServers, editing],
+          ? prev.mcpServers.map((s) => (s.id === saved.id ? saved : s))
+          : [...prev.mcpServers, saved],
       };
     });
     cancelEdit();
+    // 自动测试连接
+    testOne(saved);
   }
 
   // ---- 删除 ----
@@ -313,6 +346,8 @@ export function McpSettingsScreen({
 
           {form.mcpServers.map((server) => {
             const isExpanded = expandedId === server.id;
+            const status = mcpStatuses[server.id];
+            const color = statusColor(status);
             return (
               <View key={server.id}>
                 {/* 摘要行 */}
@@ -338,6 +373,8 @@ export function McpSettingsScreen({
                           : server.url || "sse"}
                       </Text>
                     </View>
+                    {/* 连接状态指示点 */}
+                    <View style={[styles.statusDot, { backgroundColor: color }]} />
                     {isExpanded ? (
                       <ChevronUp color={theme.muted} size={16} />
                     ) : (
@@ -447,6 +484,18 @@ export function McpSettingsScreen({
                         <Check color="#FFF" size={16} />
                         <Text style={styles.actionBtnText}>确定</Text>
                       </Pressable>
+                      {/* 测试连接按钮 */}
+                      <Pressable
+                        onPress={() => testOne(editing)}
+                        style={[styles.actionBtn, { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1 }]}
+                      >
+                        {testingId === server.id ? (
+                          <ActivityIndicator color={theme.ink} size="small" />
+                        ) : (
+                          <Plug color={theme.ink} size={14} />
+                        )}
+                        <Text style={[styles.actionBtnText, { color: theme.ink }]}>测试</Text>
+                      </Pressable>
                       <Pressable onPress={cancelEdit} style={[styles.actionBtn, { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1 }]}>
                         <X color={theme.ink} size={16} />
                         <Text style={[styles.actionBtnText, { color: theme.ink }]}>取消</Text>
@@ -519,7 +568,12 @@ const styles = StyleSheet.create({
   rowName: { fontSize: 14, fontWeight: "700" },
   rowPressable: {
     alignItems: "center", flex: 1, flexDirection: "row",
-    paddingHorizontal: 14, paddingVertical: 12,
+    gap: 8, paddingHorizontal: 14, paddingVertical: 12,
+  },
+  statusDot: {
+    borderRadius: 5,
+    height: 10,
+    width: 10,
   },
   saveBtn: {
     alignItems: "center", borderRadius: 10, paddingVertical: 14,
