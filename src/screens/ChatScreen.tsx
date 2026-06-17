@@ -363,19 +363,23 @@ export function ChatScreen({
           <Text style={[styles.kicker, { color: theme.accentDark }]}>
             自定义 API CHAT
           </Text>
-          {/* <Text style={[styles.title, { color: theme.ink }]}>
-            DeepSeek Custom
-          </Text> */}
           <Pressable
             onPress={() => setShowProfileMenu(!showProfileMenu)}
             style={styles.profileSelector}
           >
-            <Text style={[styles.subtitle, { color: theme.muted }]}>
-              {activeProfile ? `${activeProfile.name} · ${activeProfile.model}` : "未配置 API"}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Text style={[styles.subtitle, { color: theme.ink, fontWeight: "800", fontSize: 15 }]}>
+                {activeProfile ? activeProfile.name : "未配置 API"}
+              </Text>
+              {settings.apiProfiles.filter(p => p.enabled).length > 1 && (
+                <View style={[styles.switchBadge, { backgroundColor: theme.accent + "22" }]}>
+                  <ChevronDown color={theme.accent} size={12} />
+                </View>
+              )}
+            </View>
+            <Text style={[styles.modelHint, { color: theme.muted }]}>
+              {activeProfile ? activeProfile.model : ""}
             </Text>
-            {settings.apiProfiles.length > 1 && (
-              <ChevronDown color={theme.muted} size={14} style={styles.chevron} />
-            )}
           </Pressable>
         </View>
 
@@ -549,6 +553,14 @@ const styles = StyleSheet.create({
   },
   screen: { flex: 1 },
   subtitle: { fontSize: 14, marginTop: 4 },
+  switchBadge: {
+    alignItems: "center",
+    borderRadius: 10,
+    height: 20,
+    justifyContent: "center",
+    width: 20,
+  },
+  modelHint: { fontSize: 12, marginTop: 2 },
   title: { fontSize: 30, fontWeight: "900", marginTop: 4 },
   titleBlock: { flex: 1, gap: 2 },
   tokenHint: { fontSize: 13, fontWeight: "700", textAlign: "center" },

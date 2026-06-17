@@ -542,20 +542,19 @@ export function SettingsScreen({
         </View>
 
         {/* ---- 操作按钮 ---- */}
-        <View style={styles.actions}>
-          <IconButton
-            icon={Save}
-            label={isSaving ? "保存中" : "保存全部设置"}
-            onPress={save}
-            tone="accent"
-          />
-          <IconButton
-            icon={Trash2}
-            label="清除聊天记录"
-            onPress={confirmClear}
-            tone="danger"
-          />
-        </View>
+        <Pressable
+          onPress={save}
+          style={({ pressed }) => [
+            styles.fullSaveBtn,
+            { backgroundColor: theme.accent },
+            pressed && { opacity: 0.85 },
+          ]}
+        >
+          <Save color="#FFF" size={18} />
+          <Text style={styles.fullSaveBtnText}>
+            {isSaving ? "保存中..." : "保存全部设置"}
+          </Text>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -575,11 +574,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "700",
   },
-  actions: {
+  fullSaveBtn: {
+    alignItems: "center",
+    borderRadius: 12,
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
+    gap: 8,
+    justifyContent: "center",
+    paddingVertical: 14,
   },
+  fullSaveBtnText: { color: "#FFF", fontSize: 16, fontWeight: "700" },
   activeDot: {
     borderRadius: 4,
     height: 8,
