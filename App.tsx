@@ -107,9 +107,18 @@ function AppContent() {
   }, []);
 
   // ---- 创建新会话 ----
-  const createSession = useCallback(() => {
+  // 如果当前会话没有消息（空聊），则原地替换，不写入历史记录
+  const createSession = useCallback((currentSession: ChatSession) => {
     const nextSession = createEmptySession();
-    setSessions((current) => [nextSession, ...current]);
+    setSessions((prev) => {
+      const isEmpty = currentSession.messages.length === 0;
+      if (isEmpty) {
+        // 空会话不存历史：替换掉原来的空会话
+        return prev.map((s) => (s.id === currentSession.id ? nextSession : s));
+      }
+      // 有消息的会话保留在历史里
+      return [nextSession, ...prev];
+    });
     setActiveSessionId(nextSession.id);
     setActiveTab("chat");
   }, []);
@@ -135,18 +144,16 @@ function AppContent() {
   // ---- 启动中显示加载动画 ----
   if (isBooting || !settings || !activeSession) {
     return (
-      <SafeAreaProvider>
-        <SafeAreaView style={[styles.bootContainer, { backgroundColor: theme.background }]}>
-          <ActivityIndicator color={theme.accent} size="large" />
-        </SafeAreaView>
-      </SafeAreaProvider>
+      <SafeAreaView style={[styles.bootContainer, { backgroundColor: theme.background }]}>
+        <ActivityIndicator color={theme.accent} size="large" />
+      </SafeAreaView>
     );
   }
 
   const isDark = theme.ink === "#EEF2FA";
 
   return (
-    <SafeAreaProvider>
+    <>
       <StatusBar style={isDark ? "light" : "dark"} />
       <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
         {activeTab === "chat" ? (
@@ -194,13 +201,13 @@ function AppContent() {
           />
         )}
       </SafeAreaView>
-    </SafeAreaProvider>
+    </>
   );
 }
 
 // ----------------------------------------------------------
 // App — 根组件
-// 包裹 ThemeProvider 提供主题上下文
+// SafeAreaProvider 在最外层，确保 Toast 等子组件可用 useSafeAreaInsets
 // ----------------------------------------------------------
 export default function App() {
   const [initialThemeMode, setInitialThemeMode] = useState<"system" | "lit" | "dim">("system");
@@ -230,13 +237,15 @@ export default function App() {
   }
 
   return (
-    <ThemeProvider initialMode={initialThemeMode}>
-      <ErrorBoundary>
-        <ToastProvider>
-          <AppContent />
-        </ToastProvider>
-      </ErrorBoundary>
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider initialMode={initialThemeMode}>
+        <ErrorBoundary>
+          <ToastProvider>
+            <AppContent />
+          </ToastProvider>
+        </ErrorBoundary>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
 

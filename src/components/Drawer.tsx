@@ -49,8 +49,10 @@ type DrawerProps = {
   onSelectSession: (sessionId: string) => void;
   /** 删除会话 */
   onDeleteSession: (sessionId: string) => void;
-  /** 新建对话 */
-  onCreateSession: () => void;
+  /** 新建对话（传入当前会话用于判断是否为空聊） */
+  onCreateSession: (currentSession: ChatSession) => void;
+  /** 当前激活的会话（传给 onCreateSession 判断是否空聊） */
+  activeSession: ChatSession;
   /** 打开 API 设置 */
   onOpenSettings: () => void;
   /** 打开 MCP 设置 */
@@ -64,6 +66,7 @@ export function Drawer({
   onClose,
   sessions,
   activeSessionId,
+  activeSession,
   onSelectSession,
   onDeleteSession,
   onCreateSession,
@@ -140,7 +143,7 @@ export function Drawer({
             {/* 新建对话 */}
             <Pressable
               onPress={() => {
-                onCreateSession();
+                onCreateSession(activeSession);
                 onClose();
               }}
               style={({ pressed }) => [

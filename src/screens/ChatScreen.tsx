@@ -41,7 +41,7 @@ type ChatScreenProps = {
   settings: AppSettings;
   activeApiToken: string;
   onSwitchProfile?: (profileId: string) => void;
-  onCreateSession: () => void;
+  onCreateSession: (currentSession: ChatSession) => void;
   onDeleteSession: (sessionId: string) => void;
   onOpenSettings: () => void;
   onOpenMcpSettings?: () => void;
@@ -342,6 +342,7 @@ export function ChatScreen({
       {/* ---- 侧滑抽屉 ---- */}
       <Drawer
         activeSessionId={activeSession.id}
+        activeSession={activeSession}
         onCreateSession={onCreateSession}
         onClose={() => setDrawerOpen(false)}
         onDeleteSession={onDeleteSession}
@@ -399,7 +400,7 @@ export function ChatScreen({
             <Pressable
               accessibilityLabel="新建对话"
               onPress={() => {
-                onCreateSession();
+                onCreateSession(activeSession);
                 toast.show({ message: "已创建新对话" });
               }}
               style={styles.iconBtn}
