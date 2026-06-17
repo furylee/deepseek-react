@@ -15,19 +15,21 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Alert,
   FlatList,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+
 import * as Clipboard from "expo-clipboard";
 import { LinearGradient } from "expo-linear-gradient";
 import { Check, ChevronDown, Menu, PenSquare } from "lucide-react-native";
 
 import { requestAssistantReply } from "../api/chatApi";
 import { ChatComposer } from "../components/ChatComposer";
+import { ChatMinimap } from "../components/ChatMinimap";
 import { Drawer } from "../components/Drawer";
 import { MessageBubble } from "../components/MessageBubble";
 import { useToast } from "../components/Toast";
@@ -72,6 +74,10 @@ export function ChatScreen({
   const [isSending, setIsSending] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [visibleUserMsgIndex, setVisibleUserMsgIndex] = useState<number | undefined>();
+  const viewabilityConfigRef = useRef({ itemVisiblePercentThreshold: 20 });
+  /** 用户是否手动向上滚动离开了底部（流式输出期间不抢焦点） */
+  const userScrolledUp = useRef(false);
 
   const activeProfile = getActiveProfile(settings);
 
@@ -79,6 +85,27 @@ export function ChatScreen({
   const headerGradientColors: [string, string] = isDark
     ? ["#1A2235", "#1A2A25"]
     : ["#FFFFFF", "#EDF7F6"];
+
+  // ---- 手动管理键盘高度，避免 KeyboardAvoidingView 的空白残留问题 ----
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+
+  useEffect(() => {
+    // iOS 用 keyboardWillShow/Hide 与系统动画同步
+    // Android 只有 keyboardDidShow/Hide
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSub = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const hideSub = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   // ---- 替换消息列表中的某一条消息 ----
   function replaceMessage(messages: ChatMessage[], nextMessage: ChatMessage) {
@@ -91,6 +118,8 @@ export function ChatScreen({
   async function sendMessage() {
     const content = draft.trim();
     if (!content || isSending) return;
+
+    userScrolledUp.current = false; // 用户主动发送，强制跟随底部
 
     const userMessage = createMessage("user", content);
     const assistantMessage = createMessage("assistant", "");
@@ -249,6 +278,8 @@ export function ChatScreen({
   async function triggerRegenerateSend(content: string) {
     if (isSendingRef.current) return;
 
+    userScrolledUp.current = false; // 重新生成也强制跟随底部
+
     const session = activeSessionRef.current;
     const profile = activeProfileRef.current;
     const token = activeApiTokenRef.current;
@@ -325,9 +356,33 @@ export function ChatScreen({
     }
   }
 
-  // ---- 自动滚到底部 ----
+  // ---- minimap 锚点点击：滚动到指定消息 ----
+  function handleMinimapAnchorPress(msgIndex: number) {
+    userScrolledUp.current = false;
+    flatListRef.current?.scrollToIndex({
+      index: msgIndex,
+      animated: true,
+      viewPosition: 0.1,
+    });
+  }
+
+  // ---- 检测用户手动上滑 ----
+  const handleScroll = useCallback(
+    ({ nativeEvent }: { nativeEvent: { contentOffset: { y: number }; contentSize: { height: number }; layoutMeasurement: { height: number } } }) => {
+      const { y } = nativeEvent.contentOffset;
+      const bottomOffset =
+        nativeEvent.contentSize.height -
+        nativeEvent.layoutMeasurement.height -
+        y;
+      // 距离底部超过 60px 视为用户主动上滑离开底部
+      userScrolledUp.current = bottomOffset > 60;
+    },
+    []
+  );
+
+  // ---- 自动滚到底部（仅当用户未手动上滑时）----
   useEffect(() => {
-    if (activeSession.messages.length > 0) {
+    if (activeSession.messages.length > 0 && !userScrolledUp.current) {
       setTimeout(() => {
         flatListRef.current?.scrollToEnd({ animated: true });
       }, 100);
@@ -335,10 +390,7 @@ export function ChatScreen({
   }, [activeSession.messages.length, activeSession.messages[activeSession.messages.length - 1]?.content]);
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={[styles.screen, { backgroundColor: theme.background }]}
-    >
+    <View style={[styles.screen, { backgroundColor: theme.background }]}>
       {/* ---- 侧滑抽屉 ---- */}
       <Drawer
         activeSessionId={activeSession.id}
@@ -371,29 +423,70 @@ export function ChatScreen({
               onPress={() => setShowProfileMenu(!showProfileMenu)}
               style={styles.profileSelector}
             >
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1 }}>
-                <Text
-                  style={[styles.modelBtn, { color: theme.ink }]}
-                  numberOfLines={1}
-                  ellipsizeMode="tail"
-                >
-                  {activeProfile ? activeProfile.model : "未配置"}
-                </Text>
+              <Text
+                style={[styles.modelBtn, { color: theme.ink }]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {activeProfile ? activeProfile.model : "未配置"}
+              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginTop: 4 }}>
                 <ChevronDown
                   color={theme.accent}
                   size={14}
                   style={showProfileMenu ? { transform: [{ rotate: "180deg" }] } : {}}
                 />
+                <Text
+                  style={[styles.profileHint, { color: theme.muted }]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {activeProfile ? activeProfile.name : "请先配置 API"}
+                </Text>
               </View>
-              <Text
-                style={[styles.profileHint, { color: theme.muted }]}
-                numberOfLines={1}
-                ellipsizeMode="tail"
-              >
-                {activeProfile ? activeProfile.name : "请先配置 API"}
-              </Text>
             </Pressable>
-          </View>
+
+                {/* ---- API 配置下拉菜单（浮层） ---- */}
+                {showProfileMenu && settings.apiProfiles.filter(p => p.enabled).length > 0 && (
+                  <View style={[styles.profileMenu, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+                    {settings.apiProfiles.filter(p => p.enabled).map((profile) => {
+                      const isActive = profile.id === settings.activeProfileId;
+                      return (
+                        <Pressable
+                          key={profile.id}
+                          onPress={() => {
+                            onSwitchProfile?.(profile.id);
+                            setShowProfileMenu(false);
+                          }}
+                          style={[
+                            styles.profileMenuItem,
+                            { borderBottomColor: theme.border },
+                            isActive && { backgroundColor: theme.surfaceAlt },
+                          ]}
+                        >
+                          <View style={styles.profileMenuItemText}>
+                            <Text
+                              style={[styles.profileMenuName, { color: theme.ink }]}
+                              numberOfLines={1}
+                              ellipsizeMode="tail"
+                            >
+                              {profile.name}
+                            </Text>
+                            <Text
+                              style={[styles.profileMenuDetail, { color: theme.muted }]}
+                              numberOfLines={1}
+                              ellipsizeMode="tail"
+                            >
+                              {profile.model}
+                            </Text>
+                          </View>
+                          {isActive && <Check color={theme.accent} size={16} />}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
 
           {/* 右侧：新建对话 + 菜单图标 */}
           <View style={styles.headerIcons}>
@@ -416,92 +509,80 @@ export function ChatScreen({
             </Pressable>
           </View>
         </LinearGradient>
-
-        {/* ---- API 配置下拉菜单（浮层） ---- */}
-        {showProfileMenu && settings.apiProfiles.filter(p => p.enabled).length > 0 && (
-          <View style={[styles.profileMenu, { backgroundColor: theme.surface, borderColor: theme.border }]}>
-            {settings.apiProfiles.filter(p => p.enabled).map((profile) => {
-              const isActive = profile.id === settings.activeProfileId;
-              return (
-                <Pressable
-                  key={profile.id}
-                  onPress={() => {
-                    onSwitchProfile?.(profile.id);
-                    setShowProfileMenu(false);
-                  }}
-                  style={[
-                    styles.profileMenuItem,
-                    { borderBottomColor: theme.border },
-                    isActive && { backgroundColor: theme.surfaceAlt },
-                  ]}
-                >
-                  <View style={styles.profileMenuItemText}>
-                    <Text
-                      style={[styles.profileMenuName, { color: theme.ink }]}
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                    >
-                      {profile.name}
-                    </Text>
-                    <Text
-                      style={[styles.profileMenuDetail, { color: theme.muted }]}
-                      numberOfLines={1}
-                      ellipsizeMode="tail"
-                    >
-                      {profile.model}
-                    </Text>
-                  </View>
-                  {isActive && <Check color={theme.accent} size={16} />}
-                </Pressable>
-              );
-            })}
-          </View>
-        )}
       </View>
 
-      {/* ---- 消息列表 ---- */}
-      <FlatList
-        contentContainerStyle={styles.messageList}
-        data={activeSession.messages}
-        keyExtractor={(message) => message.id}
-        keyboardShouldPersistTaps="handled"
-        ref={flatListRef}
-        ListEmptyComponent={
-          <View
-            style={[
-              styles.emptyState,
-              { backgroundColor: theme.surface, borderColor: theme.border },
-            ]}
-          >
-            <Text style={[styles.emptyTitle, { color: theme.ink }]}>
-              开始新的对话
-            </Text>
-            <Text style={[styles.emptyText, { color: theme.muted }]}>
-              你的消息会保存在本机。{"\n"}
-              点击左上角 ☰ 查看历史对话和设置。
-            </Text>
-          </View>
-        }
-        renderItem={({ item }) => (
-          <MessageBubble
-            message={item}
-            onCopy={handleCopy}
-            onRegenerate={
-              item.role === "assistant" && !item.isError
-                ? handleRegenerate
-                : undefined
+      {/* ---- 消息列表（含 minimap 锚点） ---- */}
+      <View style={{ flex: 1,flexShrink: 0 }}>
+        <FlatList
+          contentContainerStyle={[
+            styles.messageList,
+            { paddingBottom: keyboardHeight > 0 ? keyboardHeight : styles.messageList.paddingBottom },
+          ]}
+          data={activeSession.messages}
+          keyExtractor={(message) => message.id}
+          keyboardShouldPersistTaps="handled"
+          ref={flatListRef}
+          style={{ flex: 1 }}
+          ListEmptyComponent={
+            <View
+              style={[
+                styles.emptyState,
+                { backgroundColor: theme.surface, borderColor: theme.border },
+              ]}
+            >
+              <Text style={[styles.emptyTitle, { color: theme.ink }]}>
+                开始新的对话
+              </Text>
+              <Text style={[styles.emptyText, { color: theme.muted }]}>
+                你的消息会保存在本机。{"\n"}
+                点击左上角 ☰ 查看历史对话和设置。
+              </Text>
+            </View>
+          }
+          onScroll={handleScroll}
+          onScrollToIndexFailed={(info) => {
+            // fallback：用平均高度估算偏移量
+            const offset = info.index * info.averageItemLength;
+            flatListRef.current?.scrollToOffset({
+              offset,
+              animated: true,
+            });
+          }}
+          onViewableItemsChanged={({ viewableItems }) => {
+            const userItem = viewableItems.find(
+              (item) => item.item.role === "user"
+            );
+            if (userItem) {
+              setVisibleUserMsgIndex(userItem.index ?? undefined);
             }
-            isStreaming={
-              isSending &&
-              item.role === "assistant" &&
-              item.id === activeSession.messages[activeSession.messages.length - 1]?.id
-            }
-          />
-        )}
-      />
+          }}
+          renderItem={({ item }) => (
+            <MessageBubble
+              message={item}
+              onCopy={handleCopy}
+              onRegenerate={
+                item.role === "assistant" && !item.isError
+                  ? handleRegenerate
+                  : undefined
+              }
+              isStreaming={
+                isSending &&
+                item.role === "assistant" &&
+                item.id === activeSession.messages[activeSession.messages.length - 1]?.id
+              }
+            />
+          )}
+          viewabilityConfig={viewabilityConfigRef.current}
+        />
+        <ChatMinimap
+          messages={activeSession.messages}
+          currentVisibleIndex={visibleUserMsgIndex}
+          onAnchorPress={handleMinimapAnchorPress}
+        />
+      </View>
 
       {/* ---- 底部输入区 ---- */}
-      <View style={styles.composerShell}>
+      <View style={[styles.composerShell, { paddingBottom: (keyboardHeight > 0 ? keyboardHeight + 10 : 14) }]}>
         <ChatComposer
           disabled={!activeApiToken.trim()}
           isSending={isSending}
@@ -516,7 +597,7 @@ export function ChatScreen({
           </Text>
         )}
       </View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -593,8 +674,6 @@ const styles = StyleSheet.create({
   profileMenuItemText: { flex: 1, minWidth: 0 },
   profileMenuName: { fontSize: 14, fontWeight: "700" },
   profileSelector: {
-    alignItems: "center",
-    flexDirection: "row",
     marginTop: 4,
   },
   screen: { flex: 1 },
@@ -602,6 +681,6 @@ const styles = StyleSheet.create({
   modelBtn: { fontSize: 18, fontWeight: "900" },
   profileHint: { fontSize: 12, marginTop: 2 },
   title: { fontSize: 30, fontWeight: "900", marginTop: 4 },
-  titleBlock: { flex: 1, gap: 2 },
+  titleBlock: { flex: 1, gap: 2, position: "relative" },
   tokenHint: { fontSize: 13, fontWeight: "700", textAlign: "center" },
 });

@@ -50,6 +50,7 @@ import {
 
 import { fetchModelList } from "../api/modelsApi";
 import { IconButton } from "../components/IconButton";
+import { useToast } from "../components/Toast";
 import { useAppTheme } from "../contexts/ThemeContext";
 import type { ThemeMode } from "../contexts/ThemeContext";
 import { API_PRESETS } from "../constants";
@@ -80,6 +81,7 @@ export function SettingsScreen({
   onSaveSettings,
 }: SettingsScreenProps) {
   const { colors: theme, themeMode, setThemeMode } = useAppTheme();
+  const toast = useToast();
   const [form, setForm] = useState<AppSettings>(settings);
   const [tokens, setTokens] = useState<TokenMap>({ ...initialTokens });
   const [isSaving, setIsSaving] = useState(false);
@@ -108,6 +110,11 @@ export function SettingsScreen({
       model: "",
       enabled: true,
     };
+    // Add to form immediately so it renders in the list
+    setForm((prev) => ({
+      ...prev,
+      apiProfiles: [...prev.apiProfiles, newProfile],
+    }));
     setExpandedId(newProfile.id);
     setEditingProfile(newProfile);
     setEditingToken("");
@@ -115,11 +122,32 @@ export function SettingsScreen({
 
   // ---- 应用预设 ----
   function applyPreset(preset: (typeof API_PRESETS)[number]) {
-    setEditingProfile((p) =>
-      p
-        ? { ...p, name: preset.name, baseUrl: preset.baseUrl, model: p.model || preset.modelHint }
-        : p
-    );
+    if (editingProfile) {
+      // 已有正在编辑的配置，直接填入预设值
+      setEditingProfile((p) =>
+        p
+          ? { ...p, name: preset.name, baseUrl: preset.baseUrl, model: p.model || preset.modelHint }
+          : p
+      );
+      toast.show({ message: `已填入 ${preset.name} 预设` });
+    } else {
+      // 无编辑中的配置，一键创建新配置并填入预设值
+      const newProfile: ApiProfile = {
+        id: createId("ap"),
+        name: preset.name,
+        baseUrl: preset.baseUrl,
+        model: preset.modelHint,
+        enabled: true,
+      };
+      setForm((prev) => ({
+        ...prev,
+        apiProfiles: [...prev.apiProfiles, newProfile],
+      }));
+      setExpandedId(newProfile.id);
+      setEditingProfile(newProfile);
+      setEditingToken("");
+      toast.show({ message: `已添加 ${preset.name} 配置` });
+    }
   }
 
   // ---- 获取模型列表 ----

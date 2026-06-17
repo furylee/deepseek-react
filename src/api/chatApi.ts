@@ -12,12 +12,11 @@
 //     - 自建的 vLLM / Ollama 等兼容服务
 //
 // 流式输出（SSE）：
-//   当 settings.stream = true 时，会尝试以流式方式读取回复。
-//   由于 React Native 各运行环境对 fetch stream 的支持不一致，
-//   代码做了降级处理：
-//     - 有 getReader() → 边读边显示（真流式）
-//     - 没有 getReader() → 等全部响应返回再解析（伪流式）
+//   当 settings.stream = true 且调用方提供 onDelta 时，
+//   使用 react-native-sse 监听 SSE 事件并逐段回调。
 // ============================================================
+
+import EventSource from "react-native-sse";
 
 import { AppSettings, ChatMessage } from "../types";
 
@@ -48,16 +47,6 @@ type OpenAiMessage = {
   role: "system" | "user" | "assistant";
   content: string;
 };
-
-type StreamReader = {
-  read: () => Promise<{ done: boolean; value?: Uint8Array }>;
-};
-
-type TextDecoderLike = {
-  decode: (input?: Uint8Array, options?: { stream?: boolean }) => string;
-};
-
-type TextDecoderConstructor = new (label?: string) => TextDecoderLike;
 
 // ----------------------------------------------------------
 // 工具函数
@@ -108,118 +97,155 @@ function readContentFromJson(payload: any) {
   return choice?.message?.content ?? choice?.delta?.content ?? "";
 }
 
-/**
- * parseSseLine — 解析单行 SSE（Server-Sent Events）数据。
- *
- * SSE 格式：
- *   data: {"choices":[{"delta":{"content":"你好"}}]}
- *   data: [DONE]
- *
- * 返回该行包含的新文本（如果行不包含内容则返回空字符串）。
- */
-function parseSseLine(line: string) {
-  if (!line.startsWith("data:")) return "";
-  const value = line.replace(/^data:\s*/, "");
-  if (value === "[DONE]") return "";
-  try {
-    return readContentFromJson(JSON.parse(value));
-  } catch {
-    return "";
-  }
+function buildRequestBody(settings: RequestSettings, messages: ChatMessage[]) {
+  return JSON.stringify({
+    model: settings.model.trim(),
+    messages: toOpenAiMessages(messages),
+    temperature: settings.temperature,
+    max_tokens: settings.maxTokens,
+    stream: settings.stream,
+  });
 }
 
-/**
- * readStreamingResponse — 以流式方式读取 API 响应。
- *
- * 这是流式输出的核心函数。
- *
- * 兼容策略：
- *   1. 如果 response.body 支持 getReader()，按行读取 SSE 数据，
- *      每解析出一段文本就调用 onDelta 回调。
- *   2. 如果不支持（部分旧版 React Native 环境），
- *      等待整个响应结束后一次性解析所有 SSE 行，但仍逐行回调 onDelta。
- *   3. TextDecoder 不存在时用 String.fromCharCode 兜底。
- *   4. 流读取过程中网络断开时，返回已收到的内容而不崩溃。
- */
-async function readStreamingResponse(
-  response: Response,
-  onDelta: (delta: string) => void
-) {
-  // 安全获取 reader，部分 RN 环境可能抛出而非返回 null
-  let reader: StreamReader | undefined;
-  try {
-    reader = (
-      response.body as { getReader?: () => StreamReader } | null
-    )?.getReader?.();
-  } catch {
-    // 获取 reader 失败，走回退路径
-  }
+function createAbortError() {
+  const error = new Error("Aborted");
+  error.name = "AbortError";
+  return error;
+}
 
-  // 路径 A：不支持流式读取，等全部返回后再逐行回调
-  if (!reader) {
-    const text = await response.text();
-    let fullText = "";
-    const lines = text.split("\n");
-    for (const line of lines) {
-      const delta = parseSseLine(line.trim());
-      if (delta) {
-        fullText += delta;
-        onDelta(delta);
-      }
-    }
-    return fullText;
-  }
-
-  // 路径 B：真流式读取
-  // 注意：TextDecoder 在这里手动获取，不在全局声明，避免和 DOM 类型冲突。
-  // TextDecoder 可能在部分 React Native 环境不存在（如旧版 Hermes），做安全兜底。
-  let decoder: TextDecoderLike | null = null;
-  try {
-    const TextDecoderCtor = (
-      globalThis as unknown as { TextDecoder?: TextDecoderConstructor }
-    ).TextDecoder;
-    if (TextDecoderCtor) {
-      decoder = new TextDecoderCtor("utf-8");
-    }
-  } catch {
-    // TextDecoder 不可用，回退到手动字符串拼接
-  }
+function streamAssistantReply({
+  settings,
+  messages,
+  signal,
+  onDelta,
+}: CompletionOptions) {
+  const endpoint = makeChatEndpoint(settings.baseUrl);
+  const body = buildRequestBody(settings, messages);
+  const abortError = createAbortError();
 
   let fullText = "";
-  let buffer = "";
+  let settled = false;
+  let es: EventSource | null = null;
+  let resolveReply: (value: string) => void = () => {};
+  let rejectReply: (reason?: unknown) => void = () => {};
 
-  while (true) {
-    let done = false;
-    let value: Uint8Array | undefined;
+  const cleanup = () => {
+    es?.removeAllEventListeners();
+    es?.close();
+    es = null;
+  };
+
+  const finish = (value: string) => {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    resolveReply(value);
+  };
+
+  const fail = (error: Error) => {
+    if (settled) return;
+    settled = true;
+    cleanup();
+    rejectReply(error);
+  };
+
+  const reply = new Promise<string>((resolve, reject) => {
+    resolveReply = resolve;
+    rejectReply = reject;
+
+    if (signal?.aborted) {
+      fail(abortError);
+      return;
+    }
+
     try {
-      const result = await reader.read();
-      done = result.done;
-      value = result.value;
-    } catch (readError) {
-      // 流读取中断（网络断开等），返回已经收到的内容
-      break;
+      es = new EventSource(endpoint, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${settings.apiToken.trim()}`,
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+          "Cache-Control": "no-cache",
+        },
+        body,
+        pollingInterval: 0,
+        timeout: 0,
+        timeoutBeforeConnection: 0,
+      });
+    } catch (error: any) {
+      fail(error instanceof Error ? error : new Error(error?.message ?? "SSE 初始化失败。"));
+      return;
     }
-    if (done) break;
 
-    // 逐块解码：优先 TextDecoder，否则用 String.fromCharCode 兜底
-    const chunk = decoder
-      ? decoder.decode(value, { stream: true })
-      : String.fromCharCode(...(value ?? new Uint8Array()));
-    buffer += chunk;
+    const handleMessage = (event: any) => {
+      if (settled) return;
 
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? ""; // 最后一行可能不完整，保留到下次循环
-
-    for (const line of lines) {
-      const delta = parseSseLine(line.trim());
-      if (delta) {
-        fullText += delta;
-        onDelta(delta);
+      const raw = typeof event?.data === "string" ? event.data.trim() : "";
+      if (!raw) return;
+      if (raw === "[DONE]") {
+        finish(fullText);
+        return;
       }
-    }
-  }
 
-  return fullText;
+      try {
+        const payload = JSON.parse(raw);
+        const delta = readContentFromJson(payload);
+        if (delta) {
+          fullText += delta;
+          onDelta?.(delta);
+        }
+      } catch {
+        // 忽略非 JSON 数据，避免少量厂商附加事件打断整条回复。
+      }
+    };
+
+    const handleError = (event: any) => {
+      if (settled) return;
+
+      if (signal?.aborted) {
+        fail(abortError);
+        return;
+      }
+
+      if (event?.type === "timeout") {
+        fail(new Error("SSE 连接超时。"));
+        return;
+      }
+
+      if (event?.type === "exception" && event?.error instanceof Error) {
+        fail(event.error);
+        return;
+      }
+
+      const message =
+        typeof event?.message === "string" && event.message.trim()
+          ? event.message.trim()
+          : "SSE 连接发生错误。";
+      fail(new Error(message));
+    };
+
+    const handleClose = () => {
+      if (!settled) {
+        finish(fullText);
+      }
+    };
+
+    es.addEventListener("message", handleMessage);
+    es.addEventListener("error", handleError);
+    es.addEventListener("close", handleClose);
+
+    if (signal) {
+      signal.addEventListener(
+        "abort",
+        () => {
+          fail(createAbortError());
+        },
+        { once: true }
+      );
+    }
+  });
+
+  return reply;
 }
 
 // ----------------------------------------------------------
@@ -247,15 +273,14 @@ export async function requestAssistantReply({
   messages,
   signal,
   onDelta,
-}: {
-  settings: RequestSettings;
-  messages: ChatMessage[];
-  signal?: AbortSignal;
-  onDelta?: (delta: string) => void;
-}) {
+}: CompletionOptions) {
   // 没有 API Token 直接报错，让用户去设置
   if (!settings.apiToken.trim()) {
     throw new Error("请先在设置里填写 API Token。");
+  }
+
+  if (settings.stream && onDelta) {
+    return streamAssistantReply({ settings, messages, signal, onDelta });
   }
 
   let response: Response;
@@ -266,13 +291,7 @@ export async function requestAssistantReply({
         Authorization: `Bearer ${settings.apiToken.trim()}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        model: settings.model.trim(),
-        messages: toOpenAiMessages(messages),
-        temperature: settings.temperature,
-        max_tokens: settings.maxTokens,
-        stream: settings.stream,
-      }),
+      body: buildRequestBody(settings, messages),
       signal,
     });
   } catch (fetchError: any) {
@@ -294,11 +313,6 @@ export async function requestAssistantReply({
       // 读取失败也不影响后续流程
     }
     throw new Error(errorBody || `请求失败，HTTP 状态码：${response.status}`);
-  }
-
-  // 流式输出：启用 SSE 并且调用方提供了 onDelta 回调
-  if (settings.stream && onDelta) {
-    return readStreamingResponse(response, onDelta);
   }
 
   // 非流式输出：直接解析 JSON
