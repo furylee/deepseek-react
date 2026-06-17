@@ -44,6 +44,7 @@ type ChatScreenProps = {
   onDeleteSession: (sessionId: string) => void;
   onOpenSettings: () => void;
   onOpenMcpSettings?: () => void;
+  onClearAll?: () => void;
   onSelectSession: (sessionId: string) => void;
   onUpdateSession: (session: ChatSession) => void;
 };
@@ -58,6 +59,7 @@ export function ChatScreen({
   onDeleteSession,
   onOpenSettings,
   onOpenMcpSettings,
+  onClearAll,
   onSelectSession,
   onUpdateSession,
 }: ChatScreenProps) {
@@ -344,6 +346,7 @@ export function ChatScreen({
         onOpenMcpSettings={onOpenMcpSettings}
         onOpenSettings={onOpenSettings}
         onSelectSession={onSelectSession}
+        onClearAll={onClearAll}
         sessions={allSessions}
         visible={drawerOpen}
       />

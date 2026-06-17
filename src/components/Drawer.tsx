@@ -55,6 +55,8 @@ type DrawerProps = {
   onOpenSettings: () => void;
   /** 打开 MCP 设置 */
   onOpenMcpSettings?: () => void;
+  /** 清空所有聊天记录 */
+  onClearAll?: () => void;
 };
 
 export function Drawer({
@@ -67,6 +69,7 @@ export function Drawer({
   onCreateSession,
   onOpenSettings,
   onOpenMcpSettings,
+  onClearAll,
 }: DrawerProps) {
   const { colors: theme } = useAppTheme();
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
@@ -262,11 +265,26 @@ export function Drawer({
             )}
           </ScrollView>
 
-          {/* 底部提示 */}
+          {/* 底部提示 + 清空聊天按钮 */}
           <View style={[styles.footer, { borderTopColor: theme.border }]}>
             <Text style={[styles.footerText, { color: theme.muted }]}>
               {sessions.length} 个对话 · 本地存储
             </Text>
+            {sessions.length > 0 && (
+              <Pressable
+                onPress={onClearAll}
+                style={({ pressed }) => [
+                  styles.clearBtn,
+                  { borderColor: theme.coral },
+                  pressed && { backgroundColor: theme.coral + "18" },
+                ]}
+              >
+                <Trash2 color={theme.coral} size={12} />
+                <Text style={[styles.clearBtnText, { color: theme.coral }]}>
+                  清空所有记录
+                </Text>
+              </Pressable>
+            )}
           </View>
         </Animated.View>
       </View>
@@ -286,6 +304,21 @@ const styles = StyleSheet.create({
   backdrop: {
     backgroundColor: "rgba(0,0,0,0.45)",
     flex: 1,
+  },
+  clearBtn: {
+    alignItems: "center",
+    alignSelf: "center",
+    borderRadius: 8,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  clearBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
   },
   closeBtn: {
     alignItems: "center",

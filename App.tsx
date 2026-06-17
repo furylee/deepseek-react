@@ -163,6 +163,12 @@ function AppContent() {
             }}
             onCreateSession={createSession}
             onDeleteSession={removeSession}
+            onClearAll={() => {
+              Alert.alert("清空所有对话", "确定删除全部聊天记录吗？此操作不可恢复。", [
+                { text: "取消", style: "cancel" },
+                { text: "确定", style: "destructive", onPress: clearAllSessions },
+              ]);
+            }}
             onOpenSettings={() => setActiveTab("settings")}
             onOpenMcpSettings={() => setActiveTab("mcp")}
             onSelectSession={setActiveSessionId}
