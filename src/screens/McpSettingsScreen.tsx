@@ -166,16 +166,149 @@ export function McpSettingsScreen({
             <Text style={[styles.sectionTitle, { color: theme.ink }]}>
               MCP 服务
             </Text>
-            <Pressable onPress={startNew} style={[styles.addBtn, { backgroundColor: theme.accent }]}>
+            <Pressable
+              accessibilityLabel="添加 MCP 服务"
+              onPress={startNew}
+              style={({ pressed }) => [
+                styles.addBtn,
+                { backgroundColor: theme.accent },
+                pressed && { opacity: 0.8 },
+              ]}
+            >
               <Plus color="#FFFFFF" size={16} />
               <Text style={styles.addBtnText}>添加</Text>
             </Pressable>
           </View>
 
-          {form.mcpServers.length === 0 && (
+          {form.mcpServers.length === 0 && !expandedId && (
             <Text style={[styles.emptyHint, { color: theme.muted }]}>
               暂无 MCP 服务，点击"添加"创建
             </Text>
+          )}
+
+          {/* 新添加的、尚未保存的服务（不在 form.mcpServers 中） */}
+          {expandedId && editing && !form.mcpServers.some((s) => s.id === editing.id) && (
+            <View key={editing.id}>
+              <View style={[styles.row, { borderColor: theme.accent }]}>
+                <View style={styles.rowIcon}>
+                  <Terminal color={theme.accent} size={18} />
+                </View>
+                <View style={styles.rowInfo}>
+                  <Text style={[styles.rowName, { color: theme.accent }]}>
+                    {editing.name || "新服务"}
+                  </Text>
+                  <Text style={[styles.rowDetail, { color: theme.muted }]}>
+                    正在编辑...
+                  </Text>
+                </View>
+                <ChevronUp color={theme.accent} size={16} />
+              </View>
+
+              {/* 展开编辑（新服务，与下面通用编辑组件逻辑相同，后续可抽取） */}
+              <View style={[styles.editPanel, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}>
+                <Text style={[styles.label, { color: theme.muted }]}>服务名称</Text>
+                <TextInput
+                  autoCapitalize="none"
+                  autoFocus
+                  onChangeText={(name) => setEditing((p) => p ? { ...p, name } : p)}
+                  placeholder="如 filesystem、web-search"
+                  placeholderTextColor={theme.muted}
+                  style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.ink }]}
+                  value={editing.name}
+                />
+
+                <Text style={[styles.label, { color: theme.muted }]}>传输方式</Text>
+                <View style={styles.transportRow}>
+                  <Pressable
+                    onPress={() => setEditing((p) => p ? { ...p, transport: "stdio" } : p)}
+                    style={[
+                      styles.transportChip,
+                      {
+                        backgroundColor: editing.transport === "stdio" ? theme.accent : theme.surface,
+                        borderColor: editing.transport === "stdio" ? theme.accent : theme.border,
+                      },
+                    ]}
+                  >
+                    <Terminal color={editing.transport === "stdio" ? "#FFF" : theme.ink} size={14} />
+                    <Text style={{ color: editing.transport === "stdio" ? "#FFF" : theme.ink, fontSize: 13, fontWeight: "700" }}>
+                      stdio
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => setEditing((p) => p ? { ...p, transport: "sse" } : p)}
+                    style={[
+                      styles.transportChip,
+                      {
+                        backgroundColor: editing.transport === "sse" ? theme.blue : theme.surface,
+                        borderColor: editing.transport === "sse" ? theme.blue : theme.border,
+                      },
+                    ]}
+                  >
+                    <Globe color={editing.transport === "sse" ? "#FFF" : theme.ink} size={14} />
+                    <Text style={{ color: editing.transport === "sse" ? "#FFF" : theme.ink, fontSize: 13, fontWeight: "700" }}>
+                      sse
+                    </Text>
+                  </Pressable>
+                </View>
+
+                {editing.transport === "stdio" ? (
+                  <>
+                    <Text style={[styles.label, { color: theme.muted }]}>启动命令</Text>
+                    <TextInput
+                      autoCapitalize="none"
+                      onChangeText={(command) => setEditing((p) => p ? { ...p, command } : p)}
+                      placeholder="npx"
+                      placeholderTextColor={theme.muted}
+                      style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.ink }]}
+                      value={editing.command}
+                    />
+                    <Text style={[styles.label, { color: theme.muted }]}>启动参数</Text>
+                    <TextInput
+                      autoCapitalize="none"
+                      onChangeText={(args) => setEditing((p) => p ? { ...p, args } : p)}
+                      placeholder="-y @modelcontextprotocol/server-filesystem /tmp"
+                      placeholderTextColor={theme.muted}
+                      style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.ink }]}
+                      value={editing.args}
+                    />
+                    <Text style={[styles.label, { color: theme.muted }]}>环境变量（每行一个 KEY=VALUE）</Text>
+                    <TextInput
+                      autoCapitalize="none"
+                      multiline
+                      numberOfLines={3}
+                      onChangeText={(env) => setEditing((p) => p ? { ...p, env } : p)}
+                      placeholder="NODE_ENV=production"
+                      placeholderTextColor={theme.muted}
+                      style={[styles.input, styles.multiline, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.ink }]}
+                      value={editing.env}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <Text style={[styles.label, { color: theme.muted }]}>服务 URL</Text>
+                    <TextInput
+                      autoCapitalize="none"
+                      onChangeText={(url) => setEditing((p) => p ? { ...p, url } : p)}
+                      placeholder="https://mcp.example.com/sse"
+                      placeholderTextColor={theme.muted}
+                      style={[styles.input, { backgroundColor: theme.surface, borderColor: theme.border, color: theme.ink }]}
+                      value={editing.url}
+                    />
+                  </>
+                )}
+
+                <View style={styles.editActions}>
+                  <Pressable onPress={saveServer} style={[styles.actionBtn, { backgroundColor: theme.accent }]}>
+                    <Check color="#FFF" size={16} />
+                    <Text style={styles.actionBtnText}>确定</Text>
+                  </Pressable>
+                  <Pressable onPress={cancelEdit} style={[styles.actionBtn, { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1 }]}>
+                    <X color={theme.ink} size={16} />
+                    <Text style={[styles.actionBtnText, { color: theme.ink }]}>取消</Text>
+                  </Pressable>
+                </View>
+              </View>
+            </View>
           )}
 
           {form.mcpServers.map((server) => {
